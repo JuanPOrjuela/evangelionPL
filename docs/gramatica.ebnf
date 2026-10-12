@@ -1,0 +1,67 @@
+(* Gramatica de evangelionPL en EBNF.
+   { x } = cero o mas veces, [ x ] = opcional, | = alternativa *)
+
+programa       = [ cabecera ] , { sentencia } ;
+cabecera       = "NERV" , CADENA ;
+
+sentencia      = asignacion | mostrar | guardar | graficar | condicional ;
+asignacion     = nombre , "=" , flujo ;
+mostrar        = "MONITOR" , flujo ;
+guardar        = "SEELE" , flujo , "como" , CADENA ;
+graficar       = "HOLOGRAM" , ID , "de" , flujo , [ "{" , { opcion } , "}" ] ;
+condicional    = "PATTERN_BLUE" , expresion , bloque , [ "PATTERN_ORANGE" , bloque ] ;
+bloque         = "{" , { sentencia } , "}" ;
+
+flujo          = fuente , { "|>" , etapa } ;
+fuente         = carga | expresion ;
+carga          = "ENTRY_PLUG" , CADENA , [ "con" , "{" , { opcion } , "}" ] ;
+opcion         = ID , ":" , expresion , [ "," ] ;
+
+etapa          = "TARGET" , lista_columnas
+               | "AT_FIELD" , "donde" , expresion
+               | "SYNC" , columna_nueva , { "," , columna_nueva }
+               | "CODENAME" , "[" , renombre , { "," , renombre } , "]"
+               | "FORMATION" , "por" , "[" , criterio , { "," , criterio } , "]"
+               | "EJECT" , "duplicados" , [ lista_columnas ]
+               | "EJECT" , "faltantes" , [ lista_columnas ]
+               | "EJECT" , "columnas" , lista_columnas
+               | "DUMMY_PLUG" , columna_nueva , { "," , columna_nueva }
+               | "EQUIP" , nombre , "->" , ID
+               | "SQUAD" , "por" , lista_columnas
+               | "MAGI" , agregacion , { "," , agregacion }
+               | "BATTERY" , ENTERO
+               | "DIAGNOSTIC" ;
+
+columna_nueva  = nombre , "=" , expresion ;
+agregacion     = nombre , "=" , ID , "(" , [ nombre ] , ")" ;
+renombre       = nombre , "->" , nombre ;
+criterio       = nombre , [ "asc" | "desc" ] ;
+lista_columnas = "[" , nombre , { "," , nombre } , "]" ;
+
+(* Expresiones: cada nivel amarra mas fuerte que el anterior *)
+expresion      = disyuncion ;
+disyuncion     = conjuncion , { "o" , conjuncion } ;
+conjuncion     = negacion , { "y" , negacion } ;
+negacion       = "no" , negacion | igualdad ;
+igualdad       = comparacion , { ( "==" | "!=" ) , comparacion } ;
+comparacion    = suma , { ( "<" | "<=" | ">" | ">=" ) , suma } ;
+suma           = termino , { ( "+" | "-" ) , termino } ;
+termino        = unario , { ( "*" | "/" | "%" ) , unario } ;
+unario         = "-" , unario | potencia ;
+potencia       = primario , [ "^" , unario ] ;
+primario       = literal
+               | nombre
+               | nombre , "." , nombre
+               | ID , "(" , [ expresion , { "," , expresion } ] , ")"
+               | "(" , expresion , ")" ;
+
+literal        = ENTERO | REAL | CADENA | "verdadero" | "falso" | "nulo" ;
+nombre         = ID | ID_ESCAPADO ;
+
+(* Lexico *)
+ENTERO         = digito , { digito } ;
+REAL           = digito , { digito } , "." , digito , { digito } ;
+CADENA         = '"' , { caracter } , '"' ;
+ID             = letra , { letra | digito | "_" } ;
+ID_ESCAPADO    = "`" , caracter , { caracter } , "`" ;
+comentario     = "#" , { caracter } ;
