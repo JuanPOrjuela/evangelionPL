@@ -1,23 +1,18 @@
-"""Fase 2: el Visitor recorre el arbol y ejecuta el programa con pandas."""
+"""Fase 2: el Visitor recorre el arbol y ejecuta el programa con nuestra libreria de tablas."""
 
-import difflib
 import operator
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-import numpy as np
-import pandas as pd
-
 from .errores import ErrorSemantico
 from .generado.EvaParser import EvaParser
 from .generado.EvaVisitor import EvaVisitor
 from .simbolos import TablaSimbolos
+from .tablas import Columna, Tabla, es_numero, escribir_csv, leer_csv
 
-AGREGACIONES = {
-    "suma": "sum", "media": "mean", "mediana": "median", "minimo": "min",
-    "maximo": "max", "desviacion": "std", "contar": "count",
-}
+# Cada agregacion es un metodo de Columna con el mismo nombre
+AGREGACIONES = ("suma", "media", "mediana", "minimo", "maximo", "desviacion", "contar")
 SOLO_NUMEROS = {"suma", "media", "mediana", "desviacion"}
 FUNCIONES = {"filas": (1, 1), "redondear": (1, 2), "absoluto": (1, 1),
              "mayusculas": (1, 1), "minusculas": (1, 1)}
@@ -32,33 +27,34 @@ FILAS_EN_PANTALLA = 12
 @dataclass
 class Agrupada:
     """Lo que deja SQUAD: una tabla con sus grupos, esperando a MAGI."""
-    tabla: pd.DataFrame
+    tabla: Tabla
     columnas: list
 
 
 def clase_de(valor) -> str:
-    if isinstance(valor, pd.DataFrame):
+    if isinstance(valor, Tabla):
         return "tabla"
     if isinstance(valor, Agrupada):
         return "grupo"
-    if isinstance(valor, pd.Series):
-        if pd.api.types.is_bool_dtype(valor):
-            return "booleano"
-        return "numero" if pd.api.types.is_numeric_dtype(valor) else "texto"
+    if isinstance(valor, Columna):
+        return valor.clase()
     if valor is None:
         return "nulo"
-    if isinstance(valor, (bool, np.bool_)):
+    if isinstance(valor, bool):
         return "booleano"
-    if isinstance(valor, (int, float, np.integer, np.floating)):
-        return "numero"
-    return "texto"
+    return "numero" if es_numero(valor) else "texto"
+
+
+def encaja(valor, clase: str) -> bool:
+    """Una columna sin ningun dato (tabla vacia o todo faltante) encaja con cualquier clase."""
+    return clase_de(valor) in (clase, "nulo") if isinstance(valor, Columna) else clase_de(valor) == clase
 
 
 def describir(valor) -> str:
     clase = clase_de(valor)
-    if isinstance(valor, pd.Series):
+    if isinstance(valor, Columna):
         return {"numero": "una columna de números", "texto": "una columna de texto",
-                "booleano": "una columna de verdadero/falso"}[clase]
+                "booleano": "una columna de verdadero/falso", "nulo": "una columna vacía"}[clase]
     return {"tabla": "una tabla", "grupo": "una tabla agrupada", "numero": "un número",
             "texto": "un texto", "booleano": "un booleano", "nulo": "nulo"}[clase]
 
@@ -73,19 +69,28 @@ def quitar_comillas(crudo: str) -> str:
     return re.sub(r'\\(["\\nt])', lambda m: escapes.get(m.group(1), m.group(1)), crudo[1:-1])
 
 
+def distancia(a: str, b: str) -> int:
+    """Distancia de Levenshtein: cuantas letras hay que poner, quitar o cambiar
+    para pasar de una palabra a la otra."""
+    anterior = list(range(len(b) + 1))
+    for i, letra_a in enumerate(a, 1):
+        actual = [i]
+        for j, letra_b in enumerate(b, 1):
+            actual.append(min(anterior[j] + 1, actual[j - 1] + 1,
+                              anterior[j - 1] + (letra_a != letra_b)))
+        anterior = actual
+    return anterior[-1]
+
+
 def sugerir(nombre: str, opciones) -> str:
     opciones = [str(o) for o in opciones]
-    parecidas = difflib.get_close_matches(nombre, opciones, n=1)
-    if parecidas:
-        return f" ¿Quisiste decir '{parecidas[0]}'?"
-    if opciones:
-        return " Las que hay son: " + ", ".join(opciones[:10]) + "."
-    return ""
-
-
-def escalar(valor):
-    """numpy devuelve sus propios tipos, los pasamos a los de Python."""
-    return valor.item() if hasattr(valor, "item") else valor
+    if not opciones:
+        return ""
+    cercana = min(opciones, key=lambda o: distancia(nombre.lower(), o.lower()))
+    diferencia = distancia(nombre.lower(), cercana.lower())
+    if diferencia <= 2 and diferencia < len(nombre):
+        return f" ¿Quisiste decir '{cercana}'?"
+    return " Las que hay son: " + ", ".join(opciones[:10]) + "."
 
 
 def texto_de(valor) -> str:
@@ -122,39 +127,39 @@ class Interprete(EvaVisitor):
     def visitAsignacion(self, ctx):
         nombre = limpiar(ctx.nombre().getText())
         valor = self.visit(ctx.flujo())
-        if isinstance(valor, pd.Series):
+        if isinstance(valor, Columna):
             raise ErrorSemantico(ctx.flujo(), "una columna suelta no se puede guardar en una variable. "
                                               "Usa TARGET para sacar una tabla con esa columna.")
         self.simbolos.definir(nombre, clase_de(valor), valor, ctx.start.line)
 
     def visitMostrar(self, ctx):
         valor = self.visit(ctx.flujo())
-        if isinstance(valor, pd.Series):
-            valor = valor.to_frame()
+        if isinstance(valor, Columna):
+            nombre = valor.nombre or "columna"
+            valor = Tabla([nombre], {nombre: valor.valores})
         # si el flujo es solo un nombre lo usamos de titulo
         texto = ctx.flujo().getText()
         titulo = " " + texto if re.fullmatch(r"[^\W\d]\w*", texto) else ""
-        if not isinstance(valor, pd.DataFrame):
+        if not isinstance(valor, Tabla):
             print(f"MONITOR{titulo}: {texto_de(valor)}\n")
             return
-        filas, columnas = valor.shape
+        filas, columnas = len(valor), len(valor.columnas)
         print(f"MONITOR{titulo} ({filas} {'fila' if filas == 1 else 'filas'} x {columnas} columnas)")
-        print(valor.head(FILAS_EN_PANTALLA).to_string(
-            index=False, na_rep="nulo", float_format=lambda x: f"{x:.2f}"))
+        print(valor.primeras(FILAS_EN_PANTALLA).como_texto())
         if filas > FILAS_EN_PANTALLA:
             print(f"... y {filas - FILAS_EN_PANTALLA} filas más")
         print()
 
     def visitGuardar(self, ctx):
         valor = self.visit(ctx.flujo())
-        if not isinstance(valor, pd.DataFrame):
+        if not isinstance(valor, Tabla):
             raise ErrorSemantico(ctx.flujo(), f"SEELE solo recibe tablas y aquí llegó {describir(valor)}.")
         ruta = Path(quitar_comillas(ctx.CADENA().getText()))
         if ruta.suffix.lower() != ".csv":
             raise ErrorSemantico(ctx.CADENA().symbol, "por ahora los reportes solo se guardan en .csv.")
         try:
             ruta.parent.mkdir(parents=True, exist_ok=True)
-            valor.round(4).to_csv(ruta, index=False, encoding="utf-8")
+            escribir_csv(valor, ruta)
         except OSError as error:
             raise ErrorSemantico(ctx.CADENA().symbol, f"no se pudo escribir '{ruta}': {error}.")
         self.reportes.append(ruta.as_posix())
@@ -165,7 +170,7 @@ class Interprete(EvaVisitor):
         if tipo not in GRAFICAS:
             raise ErrorSemantico(ctx.ID().symbol, f"no existe la gráfica '{tipo}'." + sugerir(tipo, GRAFICAS))
         tabla = self.visit(ctx.flujo())
-        if not isinstance(tabla, pd.DataFrame):
+        if not isinstance(tabla, Tabla):
             raise ErrorSemantico(ctx.flujo(), f"HOLOGRAM necesita una tabla y aquí llegó {describir(tabla)}.")
         # los ejes nombran columnas, por eso las opciones se evaluan dentro de la tabla
         self._opciones(ctx.opcion(), OPCIONES_GRAFICA, tabla)
@@ -174,7 +179,7 @@ class Interprete(EvaVisitor):
 
     def visitCondicional(self, ctx):
         condicion = self.visit(ctx.expresion())
-        if clase_de(condicion) != "booleano" or isinstance(condicion, pd.Series):
+        if not isinstance(condicion, bool):
             raise ErrorSemantico(ctx.expresion(), "la condición de PATTERN_BLUE tiene que dar verdadero "
                                                   f"o falso, y dio {describir(condicion)}.")
         if condicion:
@@ -206,16 +211,12 @@ class Interprete(EvaVisitor):
         opciones = self._opciones(ctx.opcion(), OPCIONES_CARGA)
         if not Path(ruta).is_file():
             raise ErrorSemantico(ctx.CADENA().symbol, f"no existe el archivo '{ruta}'.")
-        con_encabezado = opciones.get("encabezado", True)
         try:
-            tabla = pd.read_csv(ruta, sep=opciones.get("separador", ","),
-                                encoding=opciones.get("codificacion", "utf-8"),
-                                header=0 if con_encabezado else None)
-        except (ValueError, LookupError, TypeError) as error:
+            return leer_csv(ruta, separador=opciones.get("separador", ","),
+                            codificacion=opciones.get("codificacion", "utf-8"),
+                            encabezado=opciones.get("encabezado", True) is not False)
+        except (ValueError, LookupError, TypeError, OSError) as error:
             raise ErrorSemantico(ctx, f"no se pudo leer '{ruta}': {error}.")
-        if not con_encabezado:
-            tabla.columns = [f"col{i + 1}" for i in range(len(tabla.columns))]
-        return tabla
 
     def _opciones(self, opciones, permitidas, tabla=None) -> dict:
         valores = {}
@@ -228,20 +229,20 @@ class Interprete(EvaVisitor):
 
     # --- Etapas --------------------------------------------------------------
 
-    def _tabla_de_entrada(self, ctx) -> pd.DataFrame:
+    def _tabla_de_entrada(self, ctx) -> Tabla:
         etapa = ctx.start.text
         if isinstance(self._entrada, Agrupada):
             raise ErrorSemantico(ctx, f"después de SQUAD tiene que venir MAGI, no {etapa}.")
-        if not isinstance(self._entrada, pd.DataFrame):
+        if not isinstance(self._entrada, Tabla):
             raise ErrorSemantico(ctx, f"{etapa} solo funciona sobre una tabla "
                                       f"y aquí llegó {describir(self._entrada)}.")
         return self._entrada
 
     def _columna(self, tabla, ctx) -> str:
         nombre = limpiar(ctx.getText())
-        if nombre not in tabla.columns:
+        if nombre not in tabla.columnas:
             raise ErrorSemantico(ctx, f"la columna '{nombre}' no existe en la tabla."
-                                 + sugerir(nombre, tabla.columns))
+                                 + sugerir(nombre, tabla.columnas))
         return nombre
 
     def _columnas(self, tabla, lista) -> list:
@@ -256,25 +257,29 @@ class Interprete(EvaVisitor):
 
     def visitEtapaSeleccionar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
-        return tabla[self._columnas(tabla, ctx.listaColumnas())]
+        return tabla.seleccionar(self._columnas(tabla, ctx.listaColumnas()))
 
     def visitEtapaFiltrar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
         condicion = self._evaluar_en(tabla, ctx.expresion())
-        if clase_de(condicion) != "booleano":
+        if not encaja(condicion, "booleano"):
             raise ErrorSemantico(ctx.expresion(), "la condición de AT_FIELD tiene que dar verdadero "
                                                   f"o falso, y dio {describir(condicion)}.")
-        if isinstance(condicion, pd.Series):
-            return tabla[condicion].reset_index(drop=True)
-        return tabla if condicion else tabla.iloc[0:0]
+        if isinstance(condicion, Columna):
+            return tabla.filtrar(condicion)
+        return tabla if condicion else tabla.primeras(0)
 
     def visitEtapaCrear(self, ctx):
-        tabla = self._tabla_de_entrada(ctx).copy()
+        tabla = self._tabla_de_entrada(ctx)
         for nueva in ctx.columnaNueva():
             valor = self._evaluar_en(tabla, nueva.expresion())
-            if isinstance(valor, pd.DataFrame):
+            if isinstance(valor, Tabla):
                 raise ErrorSemantico(nueva.expresion(), "una tabla no cabe dentro de una columna.")
-            tabla[limpiar(nueva.nombre().getText())] = valor
+            if isinstance(valor, Columna) and len(valor) != len(tabla):
+                raise ErrorSemantico(nueva.expresion(), f"la columna nueva tiene {len(valor)} filas "
+                                                        f"y la tabla tiene {len(tabla)}.")
+            # la tabla se va actualizando para que una columna pueda usar la anterior
+            tabla = tabla.con_columna(limpiar(nueva.nombre().getText()), valor)
         return tabla
 
     def visitEtapaRenombrar(self, ctx):
@@ -283,77 +288,60 @@ class Interprete(EvaVisitor):
         for renombre in ctx.renombre():
             viejo = self._columna(tabla, renombre.nombre(0))
             nuevo = limpiar(renombre.nombre(1).getText())
-            if nuevo in tabla.columns and nuevo != viejo:
+            if nuevo in tabla.columnas and nuevo != viejo:
                 raise ErrorSemantico(renombre.nombre(1), f"ya hay una columna llamada '{nuevo}'.")
             cambios[viejo] = nuevo
-        return tabla.rename(columns=cambios)
+        return tabla.renombrar(cambios)
 
     def visitEtapaOrdenar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
         columnas = [self._columna(tabla, c.nombre()) for c in ctx.criterio()]
-        ascendente = [c.DESC() is None for c in ctx.criterio()]
-        return tabla.sort_values(columnas, ascending=ascendente, kind="stable").reset_index(drop=True)
+        ascendentes = [c.DESC() is None for c in ctx.criterio()]
+        try:
+            return tabla.ordenar(columnas, ascendentes)
+        except TypeError:
+            raise ErrorSemantico(ctx, "no se puede ordenar una columna que mezcla números y textos.")
 
     def visitEtapaQuitarDuplicados(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
         columnas = self._columnas(tabla, ctx.listaColumnas()) if ctx.listaColumnas() else None
-        return tabla.drop_duplicates(subset=columnas).reset_index(drop=True)
+        return tabla.sin_duplicados(columnas)
 
     def visitEtapaQuitarFaltantes(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
         columnas = self._columnas(tabla, ctx.listaColumnas()) if ctx.listaColumnas() else None
-        return tabla.dropna(subset=columnas).reset_index(drop=True)
+        return tabla.sin_faltantes(columnas)
 
     def visitEtapaQuitarColumnas(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
-        return tabla.drop(columns=self._columnas(tabla, ctx.listaColumnas()))
+        return tabla.sin_columnas(self._columnas(tabla, ctx.listaColumnas()))
 
     def visitEtapaRellenar(self, ctx):
-        tabla = self._tabla_de_entrada(ctx).copy()
+        tabla = self._tabla_de_entrada(ctx)
         for relleno in ctx.columnaNueva():
             columna = self._columna(tabla, relleno.nombre())
             valor = self._evaluar_en(tabla, relleno.expresion())
-            if isinstance(valor, (pd.Series, pd.DataFrame)) or valor is None:
+            if isinstance(valor, (Columna, Tabla)) or valor is None:
                 raise ErrorSemantico(relleno.expresion(), "el relleno de DUMMY_PLUG tiene que ser un solo valor.")
-            if clase_de(valor) != clase_de(tabla[columna]):
+            # una columna vacia se puede rellenar con lo que sea
+            if clase_de(tabla[columna]) not in (clase_de(valor), "nulo"):
                 raise ErrorSemantico(relleno.expresion(),
                                      f"tipos incompatibles: '{columna}' es {describir(tabla[columna])} "
                                      f"y se quiso rellenar con {describir(valor)}.")
-            tabla[columna] = tabla[columna].fillna(valor)
+            tabla = tabla.con_columna(columna, tabla[columna].rellenar(valor))
         return tabla
 
     def visitEtapaConvertir(self, ctx):
-        tabla = self._tabla_de_entrada(ctx).copy()
+        tabla = self._tabla_de_entrada(ctx)
         columna = self._columna(tabla, ctx.nombre())
         tipo = ctx.ID().getText()
         if tipo not in TIPOS:
             raise ErrorSemantico(ctx.ID().symbol, f"el tipo '{tipo}' no existe." + sugerir(tipo, TIPOS))
-        serie = tabla[columna]
-        if tipo in ("entero", "booleano") and serie.isna().any():
-            raise ErrorSemantico(ctx.nombre(), f"'{columna}' tiene faltantes y así no se puede pasar "
-                                               f"a {tipo}. Rellénalos antes con DUMMY_PLUG.")
         try:
-            tabla[columna] = self._convertir(serie, tipo)
-        except (ValueError, TypeError):
+            return tabla.con_columna(columna, tabla[columna].convertir(tipo))
+        except (ValueError, TypeError, OverflowError):
             raise ErrorSemantico(ctx.nombre(), f"no se pudo convertir '{columna}' a {tipo}, "
                                                "hay valores que no encajan.")
-        return tabla
-
-    @staticmethod
-    def _convertir(serie, tipo):
-        if tipo == "entero":
-            return pd.to_numeric(serie).astype("int64")
-        if tipo == "real":
-            return pd.to_numeric(serie).astype("float64")
-        if tipo == "texto":
-            return serie.map(lambda v: v if pd.isna(v) else str(v))
-        if clase_de(serie) == "numero":
-            return serie != 0
-        palabras = {"verdadero": True, "si": True, "true": True, "falso": False, "no": False, "false": False}
-        convertida = serie.astype(str).str.lower().map(palabras)
-        if convertida.isna().any():
-            raise ValueError
-        return convertida.astype(bool)
 
     def visitEtapaAgrupar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
@@ -363,69 +351,68 @@ class Interprete(EvaVisitor):
         entrada = self._entrada
         if isinstance(entrada, Agrupada):
             tabla, claves = entrada.tabla, entrada.columnas
-        elif isinstance(entrada, pd.DataFrame):
+        elif isinstance(entrada, Tabla):
             tabla, claves = entrada, []
         else:
             raise ErrorSemantico(ctx, f"MAGI solo funciona sobre una tabla y aquí llegó {describir(entrada)}.")
 
-        grupos = tabla.groupby(claves, dropna=False) if claves else None
-        resultado = {}
+        calculos = []   # (nombre, funcion, columna)
         for agregacion in ctx.agregacion():
             nombre = limpiar(agregacion.nombre(0).getText())
             funcion = agregacion.ID().getText()
             if funcion not in AGREGACIONES:
                 raise ErrorSemantico(agregacion.ID().symbol, f"MAGI no conoce el cálculo '{funcion}'."
                                      + sugerir(funcion, AGREGACIONES))
-            if nombre in claves or nombre in resultado:
+            if nombre in claves or nombre in [c[0] for c in calculos]:
                 raise ErrorSemantico(agregacion, f"ya hay una columna llamada '{nombre}' en el resumen.")
 
             if len(agregacion.nombre()) == 1:
                 # sin columna solo tiene sentido contar las filas
                 if funcion != "contar":
                     raise ErrorSemantico(agregacion, f"{funcion}() necesita el nombre de una columna.")
-                resultado[nombre] = grupos.size() if grupos is not None else len(tabla)
+                calculos.append((nombre, funcion, None))
                 continue
 
             columna = self._columna(tabla, agregacion.nombre(1))
-            if funcion in SOLO_NUMEROS and clase_de(tabla[columna]) != "numero":
+            if funcion in SOLO_NUMEROS and not encaja(tabla[columna], "numero"):
                 raise ErrorSemantico(agregacion.nombre(1),
                                      f"tipos incompatibles: {funcion}() necesita números "
                                      f"y '{columna}' es {describir(tabla[columna])}.")
-            origen = grupos[columna] if grupos is not None else tabla[columna]
-            resultado[nombre] = getattr(origen, AGREGACIONES[funcion])()
+            calculos.append((nombre, funcion, columna))
 
-        if grupos is None:
-            return pd.DataFrame([resultado])
-        return pd.DataFrame(resultado).reset_index()
+        return tabla.resumir(claves, calculos)
 
     def visitEtapaLimitar(self, ctx):
-        return self._tabla_de_entrada(ctx).head(int(ctx.ENTERO().getText()))
+        return self._tabla_de_entrada(ctx).primeras(int(ctx.ENTERO().getText()))
 
     def visitEtapaDiagnostico(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
         filas = []
-        for columna in tabla.columns:
-            serie = tabla[columna]
-            fila = {"columna": columna, "clase": clase_de(serie), "validos": serie.count(),
-                    "faltantes": serie.isna().sum(), "distintos": serie.nunique()}
+        for nombre in tabla.columnas:
+            columna = tabla[nombre]
+            fila = {"columna": nombre, "clase": columna.clase(), "validos": columna.contar(),
+                    "faltantes": columna.faltantes(), "distintos": columna.distintos()}
             if fila["clase"] == "numero":
-                fila.update(media=serie.mean(), desviacion=serie.std(),
-                            minimo=serie.min(), maximo=serie.max())
+                fila.update(media=columna.media(), desviacion=columna.desviacion(),
+                            minimo=columna.minimo(), maximo=columna.maximo())
             filas.append(fila)
-        return pd.DataFrame(filas, columns=["columna", "clase", "validos", "faltantes", "distintos",
-                                            "media", "desviacion", "minimo", "maximo"])
+        return Tabla.de_registros(filas, ["columna", "clase", "validos", "faltantes", "distintos",
+                                          "media", "desviacion", "minimo", "maximo"])
 
     # --- Expresiones ---------------------------------------------------------
 
     def _exigir(self, ctx, operador: str, clase: str, *valores) -> None:
         necesita = {"numero": "números", "booleano": "valores de verdadero/falso"}[clase]
         for valor in valores:
-            if clase_de(valor) != clase:
+            if not encaja(valor, clase):
                 raise ErrorSemantico(ctx, f"tipos incompatibles: '{operador}' necesita {necesita} "
                                           f"y recibió {describir(valor)}.")
 
     def _operandos(self, ctx):
-        return self.visit(ctx.expresion(0)), self.visit(ctx.expresion(1)), ctx.getChild(1).getText()
+        a, b = self.visit(ctx.expresion(0)), self.visit(ctx.expresion(1))
+        if isinstance(a, Columna) and isinstance(b, Columna) and len(a) != len(b):
+            raise ErrorSemantico(ctx, f"las dos columnas no tienen las mismas filas ({len(a)} y {len(b)}).")
+        return a, b, ctx.getChild(1).getText()
 
     def visitExprParentesis(self, ctx):
         return self.visit(ctx.expresion())
@@ -445,14 +432,14 @@ class Interprete(EvaVisitor):
     def visitExprNombre(self, ctx):
         nombre = limpiar(ctx.getText())
         # dentro de una etapa primero se busca entre las columnas de la tabla
-        if self._tabla is not None and nombre in self._tabla.columns:
+        if self._tabla is not None and nombre in self._tabla.columnas:
             return self._tabla[nombre]
         simbolo = self.simbolos.buscar(nombre)
         if simbolo is not None:
             return simbolo.valor
         if self._tabla is not None:
             raise ErrorSemantico(ctx, f"'{nombre}' no es una columna de la tabla ni una variable."
-                                 + sugerir(nombre, self._tabla.columns))
+                                 + sugerir(nombre, self._tabla.columnas))
         raise ErrorSemantico(ctx, f"la variable '{nombre}' no se ha declarado."
                              + sugerir(nombre, self.simbolos.nombres()))
 
@@ -481,22 +468,21 @@ class Interprete(EvaVisitor):
         self._exigir(ctx, operador, "numero", a, b)
         if operador == "*":
             return a * b
-        if not isinstance(b, pd.Series) and b == 0:
+        if not isinstance(b, Columna) and b == 0:
             raise ErrorSemantico(ctx.expresion(1), "no se puede dividir por cero.")
         return a / b if operador == "/" else a % b
 
     def visitExprAditiva(self, ctx):
         a, b, operador = self._operandos(ctx)
         # el + tambien sirve para pegar textos
-        if operador == "+" and clase_de(a) == "texto" and clase_de(b) == "texto":
+        if operador == "+" and "texto" in (clase_de(a), clase_de(b)) and encaja(a, "texto") and encaja(b, "texto"):
             return a + b
         self._exigir(ctx, operador, "numero", a, b)
         return a + b if operador == "+" else a - b
 
     def visitExprRelacional(self, ctx):
         a, b, operador = self._operandos(ctx)
-        clases = (clase_de(a), clase_de(b))
-        if clases not in (("numero", "numero"), ("texto", "texto")):
+        if not any(encaja(a, clase) and encaja(b, clase) for clase in ("numero", "texto")):
             raise ErrorSemantico(ctx, f"tipos incompatibles: no se puede comparar {describir(a)} "
                                       f"con {describir(b)} usando '{operador}'.")
         return COMPARADORES[operador](a, b)
@@ -504,10 +490,12 @@ class Interprete(EvaVisitor):
     def visitExprIgualdad(self, ctx):
         a, b, operador = self._operandos(ctx)
         if a is None or b is None:
+            # comparar con nulo es preguntar si el dato falta
             otro = b if a is None else a
-            es_nulo = otro.isna() if isinstance(otro, pd.Series) else otro is None
-            return es_nulo if operador == "==" else ~es_nulo if isinstance(otro, pd.Series) else not es_nulo
-        if clase_de(a) != clase_de(b) or clase_de(a) == "tabla":
+            if isinstance(otro, Columna):
+                return otro.es_nulo() if operador == "==" else ~otro.es_nulo()
+            return (otro is None) == (operador == "==")
+        if not encaja(a, clase_de(b)) and not encaja(b, clase_de(a)) or clase_de(a) == "tabla":
             raise ErrorSemantico(ctx, f"tipos incompatibles: no se puede comparar {describir(a)} "
                                       f"con {describir(b)} usando '{operador}'.")
         return a == b if operador == "==" else a != b
@@ -515,7 +503,7 @@ class Interprete(EvaVisitor):
     def visitExprNo(self, ctx):
         valor = self.visit(ctx.expresion())
         self._exigir(ctx, "no", "booleano", valor)
-        return ~valor if isinstance(valor, pd.Series) else not valor
+        return ~valor if isinstance(valor, Columna) else not valor
 
     def visitExprY(self, ctx):
         a, b, _ = self._operandos(ctx)
@@ -532,13 +520,13 @@ class Interprete(EvaVisitor):
         args = [self.visit(e) for e in ctx.expresion()]
 
         if nombre in AGREGACIONES:
-            if len(args) != 1 or not isinstance(args[0], pd.Series):
+            if len(args) != 1 or not isinstance(args[0], Columna):
                 raise ErrorSemantico(ctx, f"{nombre}() necesita una columna, "
                                           f"por ejemplo {nombre}(tabla.columna).")
-            if nombre in SOLO_NUMEROS and clase_de(args[0]) != "numero":
+            if nombre in SOLO_NUMEROS and not encaja(args[0], "numero"):
                 raise ErrorSemantico(ctx, f"tipos incompatibles: {nombre}() necesita números "
                                           f"y recibió {describir(args[0])}.")
-            return escalar(getattr(args[0], AGREGACIONES[nombre])())
+            return getattr(args[0], nombre)()
 
         if nombre not in FUNCIONES:
             raise ErrorSemantico(ctx, f"la función '{nombre}' no existe."
@@ -551,7 +539,7 @@ class Interprete(EvaVisitor):
     def _llamar(self, ctx, nombre, args):
         valor = args[0]
         if nombre == "filas":
-            if not isinstance(valor, pd.DataFrame):
+            if not isinstance(valor, Tabla):
                 raise ErrorSemantico(ctx, f"filas() necesita una tabla y recibió {describir(valor)}.")
             return len(valor)
 
@@ -562,10 +550,10 @@ class Interprete(EvaVisitor):
             decimales = args[1] if len(args) == 2 else 0
             if not isinstance(decimales, int):
                 raise ErrorSemantico(ctx, "los decimales de redondear() van como un número entero.")
-            return valor.round(decimales) if isinstance(valor, pd.Series) else round(valor, decimales)
+            return valor.redondear(decimales) if isinstance(valor, Columna) else round(valor, decimales)
 
-        if clase_de(valor) != "texto":
+        if not encaja(valor, "texto"):
             raise ErrorSemantico(ctx, f"{nombre}() necesita texto y recibió {describir(valor)}.")
-        if isinstance(valor, pd.Series):
-            return valor.str.upper() if nombre == "mayusculas" else valor.str.lower()
+        if isinstance(valor, Columna):
+            return valor.mayusculas() if nombre == "mayusculas" else valor.minusculas()
         return valor.upper() if nombre == "mayusculas" else valor.lower()

@@ -12,8 +12,7 @@ class Simbolo:
 
     def detalle(self) -> str:
         if self.clase == "tabla":
-            filas, columnas = self.valor.shape
-            return f"{filas} filas x {columnas} columnas"
+            return f"{len(self.valor)} filas x {len(self.valor.columnas)} columnas"
         if self.clase == "booleano":
             return "verdadero" if self.valor else "falso"
         if self.clase == "nulo":
