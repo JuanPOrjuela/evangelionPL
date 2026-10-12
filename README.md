@@ -1,4 +1,8 @@
-# evangelionPL
+# EvangelionPL
+
+- Julian Beltran
+- Juan Orjuela
+- Santiago Ortegon
 
 Un lenguaje de dominio específico para analizar datos, con vocabulario de
 *Neon Genesis Evangelion*. Proyecto del curso **Lenguajes de Programación y
@@ -238,5 +242,3 @@ Los CSV de `datos/` son de práctica: los nombres salen de la serie y las cifras
 son inventadas. El lenguaje carga cualquier CSV.
 
 ---
-
-Juan Pablo Orjuela Rojas
