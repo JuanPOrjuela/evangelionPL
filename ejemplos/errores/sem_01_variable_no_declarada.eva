@@ -1,0 +1,3 @@
+# Se escribio 'prueba' pero la variable se llama 'pruebas'
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+MONITOR prueba

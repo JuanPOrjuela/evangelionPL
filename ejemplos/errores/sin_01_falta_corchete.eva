@@ -1,0 +1,4 @@
+# No se cerro la lista de columnas
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+pilotos = pruebas |> TARGET [piloto, unidad
+MONITOR pilotos

@@ -1,0 +1,3 @@
+# Ese archivo no esta en la carpeta datos
+pruebas = ENTRY_PLUG "datos/pruebas_de_gendo.csv"
+MONITOR pruebas

@@ -1,0 +1,30 @@
+# Revisa si la sincronizacion de Asuka viene bajando
+NERV "Seguimiento de la piloto del EVA-02"
+
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+    |> EJECT duplicados
+    |> EJECT faltantes [sincronizacion]
+
+asuka = pruebas
+    |> AT_FIELD donde piloto == "Asuka"
+    |> SYNC diferencia = redondear(sincronizacion - media(sincronizacion), 1),
+            etiqueta = mayusculas(piloto) + " / " + unidad
+    |> TARGET [fecha, etiqueta, sincronizacion, diferencia]
+    |> FORMATION por [fecha asc]
+
+MONITOR asuka
+
+ultimas = asuka |> FORMATION por [fecha desc] |> BATTERY 3
+
+promedio_total = media(asuka.sincronizacion)
+promedio_reciente = media(ultimas.sincronizacion)
+MONITOR promedio_total
+MONITOR promedio_reciente
+
+PATTERN_BLUE promedio_reciente < promedio_total - 10 {
+    alerta = ultimas |> SYNC caida = redondear(promedio_total - sincronizacion, 1)
+    MONITOR alerta
+    SEELE alerta como "salidas/alerta_asuka.csv"
+} PATTERN_ORANGE {
+    MONITOR "Sincronizacion estable"
+}

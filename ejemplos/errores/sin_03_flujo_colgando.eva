@@ -1,0 +1,3 @@
+# Despues de |> tiene que venir una etapa
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+altas = pruebas |>

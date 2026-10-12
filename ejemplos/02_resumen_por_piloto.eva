@@ -1,0 +1,27 @@
+# Limpia las pruebas y saca un resumen por piloto
+NERV "Resumen por piloto"
+
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+
+# Hay una prueba repetida y algunas sin dato
+limpias = pruebas
+    |> EJECT duplicados
+    |> EJECT faltantes [sincronizacion]
+    |> DUMMY_PLUG armonicos = 1.0
+    |> SYNC indice = redondear(sincronizacion * armonicos, 1),
+            apto = sincronizacion >= 40
+
+por_piloto = limpias
+    |> SQUAD por [piloto, unidad]
+    |> MAGI pruebas = contar(),
+            promedio = media(sincronizacion),
+            mejor = maximo(sincronizacion),
+            peor = minimo(sincronizacion),
+            variacion = desviacion(sincronizacion)
+    |> FORMATION por [promedio desc]
+
+MONITOR por_piloto
+SEELE por_piloto como "salidas/resumen_pilotos.csv"
+
+# Estadisticas de cada columna
+MONITOR limpias |> DIAGNOSTIC

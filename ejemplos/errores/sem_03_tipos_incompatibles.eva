@@ -1,0 +1,3 @@
+# No se puede multiplicar un nombre por un numero
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+raras = pruebas |> SYNC doble = piloto * 2

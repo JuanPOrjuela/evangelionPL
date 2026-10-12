@@ -1,0 +1,51 @@
+# El archivo de combates viene con ; y con nombres de columna incomodos
+NERV "Informe de combates para el comandante"
+
+combates = ENTRY_PLUG "datos/combates.csv" con {
+    separador: ";"
+    codificacion: "utf-8"
+}
+    |> CODENAME [`Angel` -> angel,
+                 `Episodio` -> episodio,
+                 `Unidad EVA` -> unidad,
+                 `Piloto` -> piloto,
+                 `Duracion (min)` -> minutos,
+                 `Daño (%)` -> dano,
+                 `Cable cortado` -> sin_cable]
+    |> EQUIP sin_cable -> booleano
+
+# Cuanto daño recibe cada unidad
+por_unidad = combates
+    |> SQUAD por [unidad]
+    |> MAGI combates = contar(),
+            dano_medio = media(dano),
+            minutos_total = suma(minutos)
+    |> FORMATION por [dano_medio desc]
+
+MONITOR por_unidad
+SEELE por_unidad como "salidas/dano_por_unidad.csv"
+
+# La bateria interna dura 5 minutos: estos combates fueron los mas apretados
+criticos = combates
+    |> AT_FIELD donde sin_cable y minutos > 5
+    |> SYNC riesgo = redondear(dano * minutos / 100, 2)
+    |> TARGET [angel, unidad, piloto, minutos, riesgo]
+    |> FORMATION por [riesgo desc]
+
+MONITOR criticos
+
+dano_general = media(combates.dano)
+MONITOR dano_general
+
+PATTERN_BLUE dano_general > 40 {
+    SEELE criticos como "salidas/combates_criticos.csv"
+} PATTERN_ORANGE {
+    MONITOR "Sin novedad, las unidades aguantan"
+}
+
+# La grafica todavia no se dibuja, pero ya se revisa que este bien escrita
+HOLOGRAM barras de por_unidad {
+    eje_x: unidad
+    eje_y: dano_medio
+    titulo: "Daño promedio por unidad"
+}

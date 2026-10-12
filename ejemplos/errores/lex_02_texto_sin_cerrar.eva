@@ -1,0 +1,3 @@
+# Falta la comilla de cierre
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv
+MONITOR pruebas

@@ -1,0 +1,12 @@
+# Mi primer programa: cargar las pruebas y ver las cinco mejores
+NERV "Primera prueba de sincronizacion"
+
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+
+mejores = pruebas
+    |> TARGET [fecha, piloto, unidad, sincronizacion]
+    |> AT_FIELD donde sincronizacion >= 60 y piloto != "Kaworu"
+    |> FORMATION por [sincronizacion desc]
+    |> BATTERY 5
+
+MONITOR mejores

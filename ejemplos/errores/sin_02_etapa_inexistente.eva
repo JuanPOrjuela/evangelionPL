@@ -1,0 +1,3 @@
+# FILTRAR no es una etapa, la que filtra es AT_FIELD
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+altas = pruebas |> FILTRAR donde sincronizacion > 60

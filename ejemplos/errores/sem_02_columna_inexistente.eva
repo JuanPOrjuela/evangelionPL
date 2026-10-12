@@ -1,0 +1,3 @@
+# La columna se llama 'sincronizacion'
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+altas = pruebas |> AT_FIELD donde sincronisacion > 60

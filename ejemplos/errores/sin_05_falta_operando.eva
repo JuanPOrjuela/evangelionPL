@@ -1,0 +1,4 @@
+# A la suma le falta el segundo numero
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+nuevas = pruebas |> SYNC doble = sincronizacion +
+MONITOR nuevas

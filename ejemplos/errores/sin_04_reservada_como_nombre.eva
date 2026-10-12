@@ -1,0 +1,2 @@
+# MAGI es una palabra reservada, no sirve como nombre de variable
+MAGI = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
