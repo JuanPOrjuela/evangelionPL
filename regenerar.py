@@ -1,4 +1,4 @@
-"""Regenera el lexer y el parser a partir de grammar/*.g4.
+"""Regenera el lexer y el parser a partir de grammar/Eva.g4.
 
 Solo hace falta si se cambia la gramatica. Necesita Java 11 o superior;
 el .jar de ANTLR se descarga solo la primera vez.
@@ -67,9 +67,9 @@ def main() -> int:
         "-Dlanguage=Python3", "-visitor", "-no-listener",
         "-encoding", "utf-8",
         "-o", str(SALIDA), "-Xexact-output-dir",
-        "EvaLexer.g4", "EvaParser.g4",
+        "Eva.g4",
     ]
-    # se corre dentro de grammar/ para que el parser encuentre los tokens del lexer
+    # se corre dentro de grammar/ para que la ruta no quede escrita en lo generado
     resultado = subprocess.run(orden, cwd=RAIZ / "grammar")
     if resultado.returncode == 0:
         print(f"Listo, lexer y parser regenerados en {SALIDA.relative_to(RAIZ)}")

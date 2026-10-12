@@ -1,4 +1,4 @@
-# Generated from EvaParser.g4 by ANTLR 4.13.2
+# Generated from Eva.g4 by ANTLR 4.13.2
 from antlr4 import *
 if "." in __name__:
     from .EvaParser import EvaParser
@@ -7,7 +7,7 @@ else:
 
 # This class defines a complete generic visitor for a parse tree produced by EvaParser.
 
-class EvaParserVisitor(ParseTreeVisitor):
+class EvaVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by EvaParser#programa.
     def visitPrograma(self, ctx:EvaParser.ProgramaContext):

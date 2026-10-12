@@ -1,4 +1,4 @@
-# Generated from EvaParser.g4 by ANTLR 4.13.2
+# Generated from Eva.g4 by ANTLR 4.13.2
 # encoding: utf-8
 from antlr4 import *
 from io import StringIO
@@ -129,7 +129,7 @@ def serializedATN():
 
 class EvaParser ( Parser ):
 
-    grammarFileName = "EvaParser.g4"
+    grammarFileName = "Eva.g4"
 
     atn = ATNDeserializer().deserialize(serializedATN())
 

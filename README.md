@@ -177,7 +177,7 @@ Para `altas = pruebas |> AT_FIELD donde sincronizacion >= 60 |> BATTERY 5`:
 ## Estructura
 
 ```
-grammar/              EvaLexer.g4 y EvaParser.g4
+grammar/              Eva.g4 (reglas léxicas y sintácticas juntas)
 src/evangelion/
     analizador.py     fase 1: tokens y árbol
     interprete.py     fase 2: Visitor que ejecuta con pandas
@@ -206,7 +206,7 @@ ejemplos completos de punta a punta.
 
 ## Cambiar la gramática
 
-Si se edita algún `.g4` hay que volver a generar el lexer y el parser. Para eso sí
+Si se edita `grammar/Eva.g4` hay que volver a generar el lexer y el parser. Para eso sí
 hace falta Java 11 o superior:
 
 ```

@@ -11,7 +11,7 @@ import pandas as pd
 
 from .errores import ErrorSemantico
 from .generado.EvaParser import EvaParser
-from .generado.EvaParserVisitor import EvaParserVisitor
+from .generado.EvaVisitor import EvaVisitor
 from .simbolos import TablaSimbolos
 
 AGREGACIONES = {
@@ -98,7 +98,7 @@ def texto_de(valor) -> str:
     return str(valor)
 
 
-class Interprete(EvaParserVisitor):
+class Interprete(EvaVisitor):
 
     def __init__(self):
         self.simbolos = TablaSimbolos()

@@ -1,4 +1,4 @@
-# Generated from EvaLexer.g4 by ANTLR 4.13.2
+# Generated from Eva.g4 by ANTLR 4.13.2
 from antlr4 import *
 from io import StringIO
 import sys
@@ -314,7 +314,7 @@ class EvaLexer(Lexer):
                   "CADENA", "CADENA_SIN_CERRAR", "ID", "ID_ESCAPADO", "COMENTARIO", 
                   "ESPACIOS", "CARACTER_INVALIDO", "DIGITO", "LETRA", "ESCAPE" ]
 
-    grammarFileName = "EvaLexer.g4"
+    grammarFileName = "Eva.g4"
 
     def __init__(self, input=None, output:TextIO = sys.stdout):
         super().__init__(input, output)

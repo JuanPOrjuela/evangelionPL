@@ -280,8 +280,9 @@ La tercera columna cuenta por qué cada instrucción se llama así.</p>
 se validan en la fase semántica, para que una columna pueda llamarse, por ejemplo, <code>texto</code>.</p>
 
 <h1>3. Fase 1: análisis léxico</h1>
-<p>El lexer está en <code>grammar/EvaLexer.g4</code>. Lee el archivo carácter por carácter y entrega
-tokens. Estas tablas se generan a partir del lexer que produce ANTLR, así que siempre coinciden con la
+<p>Toda la gramática está en un solo archivo, <code>grammar/Eva.g4</code>: arriba las reglas
+sintácticas y abajo las léxicas. De ahí ANTLR saca el lexer, que lee el archivo carácter por carácter y
+entrega tokens. Estas tablas se generan a partir del lexer que produce ANTLR, así que siempre coinciden con la
 gramática.</p>
 {tablas_de_tokens()}
 <h2>Decisiones del lexer</h2>
@@ -302,7 +303,8 @@ línea y la columna exactas.</p>
 {bloque(tokens)}
 
 <h1>4. Fase 1: análisis sintáctico</h1>
-<p>El parser está en <code>grammar/EvaParser.g4</code>. Esta es la gramática en EBNF:</p>
+<p>Las reglas sintácticas son la primera parte de <code>grammar/Eva.g4</code> y de ellas sale el
+parser. Esta es la gramática en EBNF:</p>
 {bloque((DOCS / "gramatica.ebnf").read_text(encoding="utf-8"), largo=True)}
 <h2>Precedencia de los operadores</h2>
 {tabla(["Nivel", "Operadores", "Asociatividad"], precedencia, ["22%", "50%", "28%"])}
@@ -331,7 +333,7 @@ ANTLR genera un método <code>visit</code> por cada una.</p>
 <h1>5. Fase 2: semántica y ejecución</h1>
 <p>Si el programa pasa la fase 1, el árbol se recorre con el patrón Visitor
 (<code>src/evangelion/interprete.py</code>). La clase <code>Interprete</code> hereda del
-<code>EvaParserVisitor</code> que genera ANTLR y tiene un método por cada tipo de nodo:
+<code>EvaVisitor</code> que genera ANTLR y tiene un método por cada tipo de nodo:
 <code>visitEtapaFiltrar</code>, <code>visitExprAditiva</code>, <code>visitGuardar</code>… Cada método
 revisa que lo que le llegó tenga sentido y después hace el trabajo con pandas.</p>
 <p class="flujo">programa .eva &rarr; lexer &rarr; tokens &rarr; parser &rarr; árbol &rarr; Visitor
@@ -387,7 +389,7 @@ python regenerar.py                            (vuelve a generar lexer y parser)
 <p>Las rutas de los CSV se leen desde la carpeta donde se ejecuta el comando, por eso los ejemplos se
 corren parados en la raíz del proyecto.</p>
 {tabla(["Carpeta", "Contenido"], [
-    ("<code>grammar/</code>", "Las dos gramáticas de ANTLR: lexer y parser."),
+    ("<code>grammar/</code>", "<code>Eva.g4</code>, la gramática de ANTLR con las reglas léxicas y sintácticas juntas."),
     ("<code>src/evangelion/</code>", "El analizador (fase 1), el intérprete y la tabla de símbolos (fase 2), los errores, el árbol y los dibujos de la terminal."),
     ("<code>src/evangelion/generado/</code>", "Lo que genera ANTLR. No se edita a mano."),
     ("<code>ejemplos/</code>", "Programas válidos y, en <code>errores/</code>, programas que deben fallar."),
