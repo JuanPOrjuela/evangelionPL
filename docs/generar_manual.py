@@ -95,7 +95,8 @@ REGLAS = [
     ("Columnas", "Toda columna que se nombre en una etapa tiene que existir en la tabla que llega. "
                  "Si no existe, el error sugiere la que más se parece."),
     ("Nombres dentro de una etapa", "Primero se busca entre las columnas de la tabla y después entre las variables."),
-    ("Aritmética", "+ - * / % ^ solo aceptan números. El + también pega dos textos. No se divide por cero."),
+    ("Aritmética", "+ - * / % ^ solo aceptan números. El + también pega dos textos. Dividir un valor por cero "
+                   "es un error; dentro de una columna, esa fila queda como faltante."),
     ("Comparaciones", "< <= > >= comparan número con número o texto con texto. "
                       "== y != piden la misma clase a los dos lados, salvo que uno sea nulo."),
     ("Lógica", "y, o, no solo aceptan valores de verdadero/falso."),
@@ -103,9 +104,31 @@ REGLAS = [
     ("Etapas", "Una etapa solo se aplica a una tabla. Ninguna cambia la tabla original: devuelve una nueva."),
     ("Grupos", "Después de SQUAD la única etapa permitida es MAGI."),
     ("Agregaciones", "suma, media, mediana y desviacion piden una columna numérica; minimo, maximo y contar sirven con cualquiera."),
-    ("Faltantes", "DUMMY_PLUG rellena con un valor de la misma clase que la columna. "
-                  "EQUIP no convierte a entero ni a booleano si quedan vacíos."),
+    ("Faltantes", "Una operación con un faltante da faltante y una comparación da falso. DUMMY_PLUG rellena "
+                  "con un valor de la misma clase que la columna."),
+    ("Conversión", "EQUIP falla si algún valor no encaja en el tipo nuevo. Los vacíos siguen vacíos."),
     ("Archivos", "ENTRY_PLUG falla si el archivo no existe. SEELE solo recibe tablas y solo escribe .csv."),
+]
+
+LIBRERIA = [
+    ("Archivos CSV", "Lee el archivo carácter por carácter: respeta las comillas, acepta cualquier separador y "
+                     "decide si cada columna es de enteros, de reales o de texto. Un campo vacío es un faltante. "
+                     "También escribe el CSV de salida."),
+    ("<code>Columna</code>", "Una lista de valores con las operaciones fila por fila (aritmética, comparaciones, "
+                             "y, o, no), las estadísticas y las conversiones de tipo."),
+    ("<code>Tabla</code>", "Varias columnas del mismo largo. Sabe seleccionar, filtrar, ordenar por varias columnas, "
+                           "quitar duplicados y faltantes, agrupar, resumir y mostrarse alineada en la terminal."),
+]
+
+DECISIONES = [
+    ("Faltantes", "Se guardan como None. No cuentan en ninguna estadística."),
+    ("Media y mediana", "La media es la suma entre la cantidad de datos. La mediana es el dato del centro ya "
+                        "ordenados, o el promedio de los dos del centro si la cantidad es par."),
+    ("Desviación", "Es la muestral: la suma de las diferencias al cuadrado se divide entre n - 1 y se saca la raíz. "
+                   "Con un solo dato no se puede calcular y da nulo."),
+    ("Orden", "Se ordena de la última columna a la primera con un ordenamiento estable, y los faltantes van al final."),
+    ("Grupos", "Salen en el orden en que aparecen en la tabla."),
+    ("Tablas nuevas", "Ninguna operación cambia la tabla que recibe; siempre devuelve otra."),
 ]
 
 CSS = """
@@ -255,10 +278,12 @@ pasar únicamente las filas que cumplen una condición y las <code>MAGI</code> h
 Cada etapa recibe una tabla y entrega otra nueva, así que el programa se lee de arriba hacia abajo como
 una lista de pasos. El lenguaje no pretende ser otro Python: solo sabe hacer estas operaciones, pero las
 dice corto.</p>
-<p>Está hecho con ANTLR4 y Python. Este documento cubre las dos primeras fases del proyecto.</p>
+<p>Está hecho con ANTLR4 y Python. Para manejar los datos no se usa pandas ni ninguna otra librería:
+todo lo hace una librería propia de tablas, escrita para este proyecto. Este documento cubre las dos
+primeras fases.</p>
 {tabla(["Fase", "Qué pide el curso", "Estado"], [
     ("1", "Especificación del lenguaje, gramática, lexer y parser, árbol de análisis y errores léxicos y sintácticos.", "Completa"),
-    ("2", "Visitor, tabla de símbolos, ejecución sobre datos con pandas, agregaciones, exportar a CSV y errores semánticos.", "Completa"),
+    ("2", "Visitor, tabla de símbolos, ejecución sobre datos, agregaciones, exportar a CSV y errores semánticos.", "Completa"),
     ("3", "Gráficas y caso de estudio final.", "Pendiente. <code>HOLOGRAM</code> ya se reconoce y se revisa, pero no dibuja."),
 ], ["8%", "62%", "30%"])}
 
@@ -335,9 +360,9 @@ ANTLR genera un método <code>visit</code> por cada una.</p>
 (<code>src/evangelion/interprete.py</code>). La clase <code>Interprete</code> hereda del
 <code>EvaVisitor</code> que genera ANTLR y tiene un método por cada tipo de nodo:
 <code>visitEtapaFiltrar</code>, <code>visitExprAditiva</code>, <code>visitGuardar</code>… Cada método
-revisa que lo que le llegó tenga sentido y después hace el trabajo con pandas.</p>
+revisa que lo que le llegó tenga sentido y después le pide el trabajo a la librería de tablas.</p>
 <p class="flujo">programa .eva &rarr; lexer &rarr; tokens &rarr; parser &rarr; árbol &rarr; Visitor
-(revisa y ejecuta) &rarr; pandas &rarr; tablas y CSV</p>
+(revisa y ejecuta) &rarr; librería de tablas &rarr; tablas y CSV</p>
 <h2>Tabla de símbolos</h2>
 <p>Cada asignación guarda en la tabla de símbolos el nombre, la clase del valor, el valor y la línea
 donde se definió. Hay un solo ámbito global: lo que se asigna dentro de un <code>PATTERN_BLUE</code>
@@ -348,6 +373,16 @@ ejemplo 04:</p>
 (<code>tabla.columna</code>) se puede usar dentro de una expresión, pero no guardar en una variable.</p>
 <h2>Reglas semánticas</h2>
 {tabla(["Sobre", "Regla"], [(a, escape(b)) for a, b in REGLAS], ["24%", "76%"])}
+
+<h2>La librería de tablas</h2>
+<p>Está en <code>src/evangelion/tablas.py</code> y no depende de nada externo. El intérprete nunca toca
+los datos directamente: decide qué hay que hacer y se lo pide a esta librería. Tiene tres partes.</p>
+{tabla(["Parte", "Qué hace"], LIBRERIA, ["24%", "76%"])}
+<p>Algunas decisiones que tocó tomar al escribirla:</p>
+{tabla(["Tema", "Cómo quedó"], DECISIONES, ["24%", "76%"])}
+<p class="nota">Lo único que viene de afuera es el runtime de ANTLR4, que es la herramienta del curso, y
+pytest, que solo corre las pruebas. Las sugerencias de los errores (<i>¿Quisiste decir…?</i>) usan una
+distancia de Levenshtein escrita a mano.</p>
 
 <h1>6. Errores</h1>
 <p>Hay tres clases de error y todas dicen la línea y la columna, muestran la línea de código y ponen
@@ -390,15 +425,15 @@ python regenerar.py                            (vuelve a generar lexer y parser)
 corren parados en la raíz del proyecto.</p>
 {tabla(["Carpeta", "Contenido"], [
     ("<code>grammar/</code>", "<code>Eva.g4</code>, la gramática de ANTLR con las reglas léxicas y sintácticas juntas."),
-    ("<code>src/evangelion/</code>", "El analizador (fase 1), el intérprete y la tabla de símbolos (fase 2), los errores, el árbol y los dibujos de la terminal."),
+    ("<code>src/evangelion/</code>", "El analizador (fase 1), el intérprete, la tabla de símbolos y la librería de tablas (fase 2), los errores, el árbol y los dibujos de la terminal."),
     ("<code>src/evangelion/generado/</code>", "Lo que genera ANTLR. No se edita a mano."),
     ("<code>ejemplos/</code>", "Programas válidos y, en <code>errores/</code>, programas que deben fallar."),
     ("<code>datos/</code>, <code>salidas/</code>", "Los CSV de entrada y los reportes que escriben los programas."),
     ("<code>tests/</code>", "Pruebas con pytest de las dos fases."),
 ], ["34%", "66%"])}
 <h2>Lo que falta</h2>
-<p>Para la fase 3 queda dibujar las gráficas de <code>HOLOGRAM</code> con Matplotlib y montar el caso
-de estudio final. Tampoco hay funciones definidas por el usuario ni ciclos; por ahora no hicieron falta
+<p>Para la fase 3 queda dibujar las gráficas de <code>HOLOGRAM</code>, también con una librería propia,
+y montar el caso de estudio final. Tampoco hay funciones definidas por el usuario ni ciclos; por ahora no hicieron falta
 porque las etapas ya trabajan sobre toda la tabla.</p>
 </body></html>"""]
     return "".join(partes)

@@ -3,6 +3,8 @@
 Un lenguaje de dominio específico para analizar datos, con vocabulario de
 *Neon Genesis Evangelion*. Proyecto del curso **Lenguajes de Programación y
 Transducción** (Universidad Sergio Arboleda, 2026-2), hecho con ANTLR4 y Python.
+El manejo de las tablas no usa pandas ni ninguna otra librería: lo hace una
+librería propia que está en `src/evangelion/tablas.py`.
 
 Los datos entran por el `ENTRY_PLUG`, el `AT_FIELD` solo deja pasar las filas
 que cumplen una condición y las `MAGI` hacen los cálculos. Si el programa corre,
@@ -29,7 +31,7 @@ SEELE por_piloto como "salidas/resumen.csv"
 | Fase | Qué incluye | Estado |
 |---|---|---|
 | 1 | Gramática, lexer y parser, árbol de análisis, errores léxicos y sintácticos | Lista |
-| 2 | Visitor, tabla de símbolos, ejecución con pandas, agregaciones, exportar CSV, errores semánticos | Lista |
+| 2 | Visitor, tabla de símbolos, ejecución sobre datos con la librería propia, agregaciones, exportar CSV, errores semánticos | Lista |
 | 3 | Gráficas y caso de estudio final | Pendiente (`HOLOGRAM` ya se reconoce, pero no dibuja) |
 
 El manual completo, con la tabla de tokens, la gramática en EBNF y las reglas
@@ -77,12 +79,12 @@ o, que es lo mismo, `python run.py ejemplos/01_primera_prueba.eva`.
 
 ```
 MONITOR mejores (5 filas x 4 columnas)
-     fecha piloto unidad  sincronizacion
-2015-10-19 Shinji EVA-01           93.50
-2015-07-20  Asuka EVA-02           92.70
-2015-08-03  Asuka EVA-02           86.60
-2015-10-05 Shinji EVA-01           80.10
-2015-09-07    Rei EVA-00           77.90
+fecha       piloto  unidad  sincronizacion
+2015-10-19  Shinji  EVA-01           93.50
+2015-07-20  Asuka   EVA-02           92.70
+2015-08-03  Asuka   EVA-02           86.60
+2015-10-05  Shinji  EVA-01           80.10
+2015-09-07  Rei     EVA-00           77.90
 
                     /\
                    /  \
@@ -180,7 +182,8 @@ Para `altas = pruebas |> AT_FIELD donde sincronizacion >= 60 |> BATTERY 5`:
 grammar/              Eva.g4 (reglas léxicas y sintácticas juntas)
 src/evangelion/
     analizador.py     fase 1: tokens y árbol
-    interprete.py     fase 2: Visitor que ejecuta con pandas
+    interprete.py     fase 2: Visitor que revisa y ejecuta el programa
+    tablas.py         librería propia: tablas, columnas, estadísticas y CSV
     simbolos.py       tabla de símbolos
     errores.py        errores en español con línea y columna
     arbol.py          árbol en texto, paréntesis y SVG
@@ -194,15 +197,28 @@ tests/                pruebas con pytest
 docs/                 manual en PDF, gramática EBNF y el script que arma el PDF
 ```
 
+## Librería propia
+
+Todo lo que se hace con los datos está escrito a mano en `tablas.py`:
+
+- Leer y escribir CSV (con comillas, otros separadores y detección de números).
+- `Columna`: operaciones fila por fila, comparaciones y manejo de faltantes.
+- Estadísticas: suma, media, mediana, mínimo, máximo, desviación estándar y conteos.
+- `Tabla`: seleccionar, filtrar, ordenar por varias columnas, quitar duplicados y
+  faltantes, agrupar y resumir, y mostrarse alineada en la terminal.
+
+Lo único que viene de afuera es el runtime de ANTLR4, que es la herramienta que
+pide el curso, y pytest, que solo se usa para correr las pruebas.
+
 ## Pruebas
 
 ```
 python -m pytest
 ```
 
-Son 131 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
-comparada con el resultado esperado, los errores de las tres clases y los
-ejemplos completos de punta a punta.
+Son 163 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+comparada con el resultado esperado, los errores de las tres clases, la librería
+de tablas por separado y los ejemplos completos de punta a punta.
 
 ## Cambiar la gramática
 
