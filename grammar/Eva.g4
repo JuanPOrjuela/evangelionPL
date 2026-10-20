@@ -76,7 +76,7 @@ literal : ENTERO | REAL | CADENA | VERDADERO | FALSO | NULO ;
 
 nombre : ID | ID_ESCAPADO ;
 
-// ============================== Reglas lexicas ==============================
+// Reglas lexicas 
 
 // --- Instrucciones (van antes que ID para que ganen el empate) ---
 NERV           : 'NERV' ;
