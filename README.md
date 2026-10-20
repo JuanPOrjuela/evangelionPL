@@ -8,7 +8,8 @@ Un lenguaje de dominio específico para analizar datos, con vocabulario de
 *Neon Genesis Evangelion*. Proyecto del curso **Lenguajes de Programación y
 Transducción** (Universidad Sergio Arboleda, 2026-2), hecho con ANTLR4 y Python.
 El manejo de las tablas no usa pandas ni ninguna otra librería: lo hace una
-librería propia que está en `src/evangelion/tablas.py`.
+librería propia que está en `src/evangelion/tablas.py`. Las gráficas tampoco usan
+Matplotlib: se dibujan píxel por píxel y el PNG se arma desde cero.
 
 Los datos entran por el `ENTRY_PLUG`, el `AT_FIELD` solo deja pasar las filas
 que cumplen una condición y las `MAGI` hacen los cálculos. Si el programa corre,
@@ -36,10 +37,12 @@ SEELE por_piloto como "salidas/resumen.csv"
 |---|---|---|
 | 1 | Gramática, lexer y parser, árbol de análisis, errores léxicos y sintácticos | Lista |
 | 2 | Visitor, tabla de símbolos, ejecución sobre datos con la librería propia, agregaciones, exportar CSV, errores semánticos | Lista |
-| 3 | Gráficas y caso de estudio final | Pendiente (`HOLOGRAM` ya se reconoce, pero no dibuja) |
+| 3 | Cinco tipos de gráfica en PNG o SVG con títulos, ejes y leyendas, caso de estudio con datos reales y pruebas de regresión | Lista |
 
-El manual completo, con la tabla de tokens, la gramática en EBNF y las reglas
-semánticas, está en [`docs/manual_evangelionPL.pdf`](docs/manual_evangelionPL.pdf).
+El manual completo (de usuario y técnico), con la tabla de tokens, la gramática en
+EBNF, las reglas semánticas, cómo se dibujan las gráficas y el reporte de pruebas,
+está en [`docs/manual_evangelionPL.pdf`](docs/manual_evangelionPL.pdf). El caso de
+estudio está en [`caso_estudio/`](caso_estudio/README.md).
 
 ## Instalación
 
@@ -169,10 +172,38 @@ Siempre dicen la línea y la columna.
 | `MONITOR flujo` | Muestra en pantalla |
 | `SEELE flujo como "archivo.csv"` | Guarda en CSV |
 | `PATTERN_BLUE cond { } PATTERN_ORANGE { }` | Condicional |
-| `HOLOGRAM barras de tabla { }` | Gráfica (se revisa, todavía no se dibuja) |
+| `HOLOGRAM tipo de flujo { opciones }` | Dibuja una gráfica y la guarda en PNG o SVG |
 
 Las etapas se encadenan con `|>` y ninguna cambia la tabla original: cada una
 devuelve una tabla nueva. Los comentarios empiezan con `#`.
+
+## Gráficas
+
+```
+HOLOGRAM lineas de grandes {
+    eje_x: año
+    eje_y: co2_pc
+    serie: pais
+    titulo: "CO2 por persona, 1970-2023"
+    etiqueta_y: "Toneladas por persona"
+    archivo: "caso_estudio/resultados/g2_lineas_co2_por_persona.png"
+}
+```
+
+![Gráfica de líneas del caso de estudio](caso_estudio/resultados/g2_lineas_co2_por_persona.png)
+
+| Tipo | Pide | Qué dibuja |
+|---|---|---|
+| `barras` | `eje_x`, `eje_y` | Una barra por categoría con su valor encima; con `serie`, barras agrupadas |
+| `lineas` | `eje_x`, `eje_y` | Una línea; con `serie`, una por grupo |
+| `histograma` | `eje_x` | Cuántos datos caen en cada intervalo (`intervalos: n`) |
+| `dispersion` | `eje_x`, `eje_y` | Un punto por fila; con `serie`, un color por grupo |
+| `caja` | `eje_y` | Cuartiles, bigotes y atípicos; con `eje_x`, una caja por categoría |
+
+Las demás opciones son `titulo`, `etiqueta_x`, `etiqueta_y`, `archivo` (`.png` o
+`.svg`; si no se da, queda en `salidas/`), `color`, `ancho`, `alto` y `leyenda`.
+El PNG lo escribe `lienzo.py`: su propio compresor DEFLATE, su CRC-32 y su
+Adler-32, y una letra de píxeles de 5 x 7 dibujada a mano en `fuente.py`.
 
 ## Árbol de análisis
 
@@ -188,6 +219,9 @@ src/evangelion/
     analizador.py     fase 1: tokens y árbol
     interprete.py     fase 2: Visitor que revisa y ejecuta el programa
     tablas.py         librería propia: tablas, columnas, estadísticas y CSV
+    graficas.py       fase 3: ejes, escalas, leyenda y los cinco tipos de gráfica
+    lienzo.py         fase 3: dibujo en píxeles, formato PNG y SVG
+    fuente.py         la letra de píxeles de las gráficas
     simbolos.py       tabla de símbolos
     errores.py        errores en español con línea y columna
     arbol.py          árbol en texto, paréntesis y SVG
@@ -196,7 +230,8 @@ src/evangelion/
     generado/         lo que genera ANTLR (no se edita)
 ejemplos/             programas .eva válidos
 ejemplos/errores/     programas que deben fallar (lex_, sin_, sem_)
-datos/                CSV de práctica
+datos/                CSV de práctica y los datos reales del caso de estudio
+caso_estudio/         programa, documento, script de descarga y resultados del caso final
 tests/                pruebas con pytest
 docs/                 manual en PDF, gramática EBNF y el script que arma el PDF
 ```
@@ -211,8 +246,9 @@ Todo lo que se hace con los datos está escrito a mano en `tablas.py`:
 - `Tabla`: seleccionar, filtrar, ordenar por varias columnas, quitar duplicados y
   faltantes, agrupar y resumir, y mostrarse alineada en la terminal.
 
-Lo único que viene de afuera es el runtime de ANTLR4, que es la herramienta que
-pide el curso, y pytest, que solo se usa para correr las pruebas.
+Lo mismo con las gráficas: escalas, cuartiles, dibujo, letra y formato PNG están
+escritos a mano. Lo único que viene de afuera es el runtime de ANTLR4, que es la
+herramienta que pide el curso, y pytest, que solo se usa para correr las pruebas.
 
 ## Pruebas
 
@@ -220,9 +256,12 @@ pide el curso, y pytest, que solo se usa para correr las pruebas.
 python -m pytest
 ```
 
-Son 163 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 208 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
-de tablas por separado y los ejemplos completos de punta a punta.
+de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
+el compresor y el PNG comparados con la librería estándar de Python, los cinco
+tipos de gráfica, las opciones de `HOLOGRAM` y el caso de estudio completo. Las
+pruebas de las fases 1 y 2 siguen corriendo, así que sirven de regresión.
 
 ## Cambiar la gramática
 
@@ -238,7 +277,9 @@ El manual se vuelve a generar con `pip install pypdf` y
 
 ## Sobre los datos
 
-Los CSV de `datos/` son de práctica: los nombres salen de la serie y las cifras
-son inventadas. El lenguaje carga cualquier CSV.
+`pruebas_sincronizacion.csv` y `combates.csv` son de práctica: los nombres salen
+de la serie y las cifras son inventadas. `co2_latam.csv` sí es real: viene de Our
+World in Data (CC BY 4.0) y se vuelve a bajar con `python caso_estudio/descargar_datos.py`.
+El lenguaje carga cualquier CSV.
 
 ---
