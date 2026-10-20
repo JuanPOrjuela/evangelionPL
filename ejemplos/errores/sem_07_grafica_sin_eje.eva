@@ -1,0 +1,3 @@
+# Una grafica de barras necesita saber que va en cada eje
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+HOLOGRAM barras de pruebas { eje_x: piloto }

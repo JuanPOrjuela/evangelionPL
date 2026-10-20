@@ -1,0 +1,56 @@
+# Los cinco tipos de HOLOGRAM con los datos de practica
+NERV "Graficas de las pruebas de sincronizacion"
+
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+    |> EJECT duplicados
+    |> EJECT faltantes [sincronizacion]
+    |> SYNC mes = reemplazar(fecha, "2015-", "")
+
+# Barras agrupadas: una barra por piloto en cada mes (la serie arma los grupos)
+por_mes = pruebas
+    |> AT_FIELD donde piloto == "Shinji" o piloto == "Rei" o piloto == "Asuka"
+    |> SYNC mes = reemplazar(mes, "-", "/")
+    |> SYNC mes = mayusculas(mes)
+    |> TARGET [mes, piloto, sincronizacion]
+    |> FORMATION por [mes asc]
+HOLOGRAM barras de por_mes {
+    eje_x: mes
+    eje_y: sincronizacion
+    serie: piloto
+    titulo: "Sincronización por prueba"
+    archivo: "salidas/sincronizacion_barras.png"
+}
+
+# Lineas: la evolucion de cada piloto a lo largo de las pruebas
+HOLOGRAM lineas de pruebas |> FORMATION por [prueba asc] {
+    eje_x: prueba
+    eje_y: sincronizacion
+    serie: piloto
+    titulo: "Evolución de la sincronización"
+    archivo: "salidas/sincronizacion_lineas.png"
+}
+
+HOLOGRAM histograma de pruebas {
+    eje_x: sincronizacion
+    intervalos: 8
+    titulo: "¿Qué tan seguido se logra cada nivel?"
+    archivo: "salidas/sincronizacion_histograma.svg"
+}
+
+# Dispersion: ¿mas armonicos, mas sincronizacion?
+HOLOGRAM dispersion de pruebas |> EJECT faltantes [armonicos] {
+    eje_x: armonicos
+    eje_y: sincronizacion
+    serie: unidad
+    titulo: "Armónicos contra sincronización"
+    archivo: "salidas/sincronizacion_dispersion.png"
+}
+
+HOLOGRAM caja de pruebas {
+    eje_x: piloto
+    eje_y: sincronizacion
+    titulo: "Sincronización de cada piloto"
+    leyenda: falso
+    color: "#2a9d8f"
+    archivo: "salidas/sincronizacion_caja.png"
+}

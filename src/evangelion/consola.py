@@ -60,7 +60,8 @@ def preparar_terminal() -> None:
         sys.stdout.reconfigure(errors="replace")
 
 
-def exito(archivo: str, operacion: str, tokens: int, variables: list, reportes: list) -> str:
+def exito(archivo: str, operacion: str, tokens: int, variables: list, reportes: list,
+          graficas: list = ()) -> str:
     datos = []
     if operacion:
         datos.append(f"    Operación : {operacion}")
@@ -69,6 +70,8 @@ def exito(archivo: str, operacion: str, tokens: int, variables: list, reportes: 
         datos.append(f"    Variables : {', '.join(variables)}")
     if reportes:
         datos.append(f"    Reportes  : {', '.join(reportes)}")
+    if graficas:
+        datos.append(f"    Gráficas  : {', '.join(graficas)}")
 
     mensaje = (
         "  ¡Felicidades, Shinji! (omedetou!)\n"

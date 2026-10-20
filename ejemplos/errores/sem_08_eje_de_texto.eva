@@ -1,0 +1,3 @@
+# El histograma cuenta numeros: no se puede hacer con los nombres de los pilotos
+pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+HOLOGRAM histograma de pruebas { eje_x: piloto }

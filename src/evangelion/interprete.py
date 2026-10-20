@@ -5,6 +5,7 @@ import re
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import graficas
 from .errores import ErrorSemantico
 from .generado.EvaParser import EvaParser
 from .generado.EvaVisitor import EvaVisitor
@@ -15,11 +16,15 @@ from .tablas import Columna, Tabla, es_numero, escribir_csv, leer_csv
 AGREGACIONES = ("suma", "media", "mediana", "minimo", "maximo", "desviacion", "contar")
 SOLO_NUMEROS = {"suma", "media", "mediana", "desviacion"}
 FUNCIONES = {"filas": (1, 1), "redondear": (1, 2), "absoluto": (1, 1),
-             "mayusculas": (1, 1), "minusculas": (1, 1)}
+             "mayusculas": (1, 1), "minusculas": (1, 1), "reemplazar": (3, 3)}
 TIPOS = ("entero", "real", "texto", "booleano")
-GRAFICAS = ("barras", "lineas", "histograma", "dispersion", "caja")
+GRAFICAS = graficas.TIPOS
 OPCIONES_CARGA = ("separador", "codificacion", "encabezado")
-OPCIONES_GRAFICA = ("eje_x", "eje_y", "titulo", "archivo")
+OPCIONES_GRAFICA = ("eje_x", "eje_y", "serie", "titulo", "etiqueta_x", "etiqueta_y", "archivo",
+                    "color", "intervalos", "ancho", "alto", "leyenda")
+EJES = ("eje_x", "eje_y", "serie")
+TEXTOS_GRAFICA = ("titulo", "etiqueta_x", "etiqueta_y", "archivo", "color")
+ENTEROS_GRAFICA = {"intervalos": (1, 200), "ancho": (320, 4000), "alto": (240, 4000)}
 COMPARADORES = {"<": operator.lt, "<=": operator.le, ">": operator.gt, ">=": operator.ge}
 FILAS_EN_PANTALLA = 12
 
@@ -109,7 +114,7 @@ class Interprete(EvaVisitor):
         self.simbolos = TablaSimbolos()
         self.operacion = ""
         self.reportes = []       # archivos que escribio SEELE
-        self.graficas = []       # graficas revisadas, se dibujan en la fase 3
+        self.graficas = []       # archivos que dibujo HOLOGRAM
         self._entrada = None     # lo que recibe la etapa que se esta ejecutando
         self._tabla = None       # tabla cuyas columnas se pueden nombrar ahora
 
@@ -173,9 +178,60 @@ class Interprete(EvaVisitor):
         if not isinstance(tabla, Tabla):
             raise ErrorSemantico(ctx.flujo(), f"HOLOGRAM necesita una tabla y aquí llegó {describir(tabla)}.")
         # los ejes nombran columnas, por eso las opciones se evaluan dentro de la tabla
-        self._opciones(ctx.opcion(), OPCIONES_GRAFICA, tabla)
-        self.graficas.append(tipo)
-        print(f"HOLOGRAM: gráfica de {tipo} revisada, el dibujo queda para la fase 3\n")
+        valores = self._opciones(ctx.opcion(), OPCIONES_GRAFICA, tabla)
+        donde = {o.ID().getText(): o for o in ctx.opcion()}
+        grafica = self._armar_grafica(ctx, tipo, valores, donde)
+
+        ruta = Path(valores.get("archivo") or f"salidas/{tipo}_{len(self.graficas) + 1}.png")
+        if ruta.suffix.lower() not in (".png", ".svg"):
+            raise ErrorSemantico(donde["archivo"], "las gráficas se guardan en .png o en .svg.")
+        try:
+            ruta.parent.mkdir(parents=True, exist_ok=True)
+            usadas = graficas.guardar(grafica, ruta)
+        except ValueError as error:
+            raise ErrorSemantico(ctx, f"HOLOGRAM no pudo dibujar la gráfica: {error}.")
+        except OSError as error:
+            raise ErrorSemantico(ctx, f"no se pudo escribir '{ruta}': {error}.")
+        self.graficas.append(ruta.as_posix())
+        print(f"HOLOGRAM proyectó la gráfica de {tipo} en {ruta.as_posix()} ({usadas} filas)\n")
+
+    def _armar_grafica(self, ctx, tipo, valores, donde) -> graficas.Grafica:
+        """Revisa que cada opcion tenga el tipo que le toca y arma la Grafica."""
+        faltan = [eje for eje in graficas.OBLIGATORIOS[tipo] if eje not in valores]
+        if faltan:
+            raise ErrorSemantico(ctx, f"la gráfica de {tipo} necesita {' y '.join(faltan)}.")
+        for eje in EJES:
+            if eje in valores and not isinstance(valores[eje], Columna):
+                raise ErrorSemantico(donde[eje], f"{eje} tiene que ser una columna de la tabla "
+                                                 f"y aquí llegó {describir(valores[eje])}.")
+        for eje in graficas.NUMERICOS[tipo]:
+            if eje in valores and not encaja(valores[eje], "numero"):
+                raise ErrorSemantico(donde[eje], f"tipos incompatibles: en la gráfica de {tipo} el {eje} "
+                                                 f"tiene que ser numérico y '{valores[eje].nombre}' es "
+                                                 f"{describir(valores[eje])}.")
+        for opcion in TEXTOS_GRAFICA:
+            if opcion in valores and not isinstance(valores[opcion], str):
+                raise ErrorSemantico(donde[opcion], f"{opcion} va entre comillas, como texto.")
+        for opcion, (minimo, maximo) in ENTEROS_GRAFICA.items():
+            valor = valores.get(opcion)
+            if valor is not None and (not isinstance(valor, int) or isinstance(valor, bool)
+                                      or not minimo <= valor <= maximo):
+                raise ErrorSemantico(donde[opcion], f"{opcion} tiene que ser un número entero "
+                                                    f"entre {minimo} y {maximo}.")
+        if "leyenda" in valores and not isinstance(valores["leyenda"], bool):
+            raise ErrorSemantico(donde["leyenda"], "leyenda va con verdadero o falso.")
+        color = None
+        if "color" in valores:
+            color = graficas.color_de(valores["color"])
+            if color is None:
+                raise ErrorSemantico(donde["color"], f"el color '{valores['color']}' no existe. Usa uno "
+                                                     f"de {', '.join(graficas.COLORES)} o un '#rrggbb'.")
+        return graficas.Grafica(
+            tipo, x=valores.get("eje_x"), y=valores.get("eje_y"), serie=valores.get("serie"),
+            titulo=valores.get("titulo", ""), etiqueta_x=valores.get("etiqueta_x"),
+            etiqueta_y=valores.get("etiqueta_y"), color=color, intervalos=valores.get("intervalos"),
+            ancho=valores.get("ancho", 960), alto=valores.get("alto", 600),
+            leyenda=valores.get("leyenda", True))
 
     def visitCondicional(self, ctx):
         condicion = self.visit(ctx.expresion())
@@ -554,6 +610,11 @@ class Interprete(EvaVisitor):
 
         if not encaja(valor, "texto"):
             raise ErrorSemantico(ctx, f"{nombre}() necesita texto y recibió {describir(valor)}.")
+        if nombre == "reemplazar":
+            viejo, nuevo = args[1], args[2]
+            if not isinstance(viejo, str) or not isinstance(nuevo, str):
+                raise ErrorSemantico(ctx, 'reemplazar() va así: reemplazar(columna, "texto viejo", "texto nuevo").')
+            return valor.reemplazar(viejo, nuevo) if isinstance(valor, Columna) else valor.replace(viejo, nuevo)
         if isinstance(valor, Columna):
             return valor.mayusculas() if nombre == "mayusculas" else valor.minusculas()
         return valor.upper() if nombre == "mayusculas" else valor.lower()

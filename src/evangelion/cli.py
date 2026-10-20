@@ -68,7 +68,7 @@ def main(argv=None) -> int:
         print(interprete.simbolos.como_texto() + "\n")
 
     print(consola.exito(ruta.name, interprete.operacion, len(res.tokens),
-                        interprete.simbolos.nombres(), interprete.reportes))
+                        interprete.simbolos.nombres(), interprete.reportes, interprete.graficas))
     return 0
 
 

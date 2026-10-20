@@ -105,6 +105,7 @@ class Columna:
     def redondear(self, decimales: int = 0): return self._cada(lambda v: round(v, decimales))
     def mayusculas(self): return self._cada(str.upper)
     def minusculas(self): return self._cada(str.lower)
+    def reemplazar(self, viejo, nuevo): return self._cada(lambda v: v.replace(viejo, nuevo))
 
     def es_nulo(self) -> "Columna":
         return Columna([v is None for v in self.valores])

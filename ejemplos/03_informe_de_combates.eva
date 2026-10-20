@@ -43,9 +43,11 @@ PATTERN_BLUE dano_general > 40 {
     MONITOR "Sin novedad, las unidades aguantan"
 }
 
-# La grafica todavia no se dibuja, pero ya se revisa que este bien escrita
+# Si no se dice archivo, la grafica queda en salidas/barras_1.png
 HOLOGRAM barras de por_unidad {
     eje_x: unidad
     eje_y: dano_medio
     titulo: "Daño promedio por unidad"
+    etiqueta_y: "Daño medio (%)"
+    color: "rojo"
 }
