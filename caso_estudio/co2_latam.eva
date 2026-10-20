@@ -1,0 +1,130 @@
+# Caso de estudio de la fase 3: emisiones de CO2 en 12 paises de America Latina.
+# Datos reales de Our World in Data (ver caso_estudio/README.md).
+# Se corre desde la carpeta del proyecto:  eva caso_estudio\co2_latam.eva
+NERV "Emisiones de CO2 en America Latina, 1970-2023"
+
+# --- 1. Carga y limpieza ---------------------------------------------------
+co2 = ENTRY_PLUG "datos/co2_latam.csv"
+    |> CODENAME [country -> pais, year -> año, population -> poblacion, gdp -> pib,
+                 co2 -> co2_mt, co2_per_capita -> co2_pc, coal_co2 -> carbon,
+                 oil_co2 -> petroleo, gas_co2 -> gas, cement_co2 -> cemento,
+                 energy_per_capita -> energia_pc, share_global_co2 -> parte_mundial]
+    |> EJECT columnas [iso_code]
+    |> EJECT faltantes [co2_mt, co2_pc]
+    |> EJECT duplicados [pais, año]
+    |> SYNC pais = reemplazar(pais, "Brazil", "Brasil"),
+            pais = reemplazar(pais, "Mexico", "México"),
+            pais = reemplazar(pais, "Peru", "Perú"),
+            decada = año - año % 10,
+            pib_pc = redondear(pib / poblacion, 0)
+
+MONITOR co2 |> DIAGNOSTIC
+
+# --- 2. Indicadores --------------------------------------------------------
+# P1. ¿Quien emitio mas en el ultimo año con datos?
+ultimo = co2
+    |> AT_FIELD donde año == 2023
+    |> TARGET [pais, co2_mt, co2_pc, parte_mundial]
+    |> FORMATION por [co2_mt desc]
+
+MONITOR ultimo
+SEELE ultimo como "caso_estudio/resultados/emisiones_2023.csv"
+
+# P2. Promedio y maximo de cada pais en todo el periodo
+por_pais = co2
+    |> SQUAD por [pais]
+    |> MAGI años = contar(),
+            co2_pc_medio = media(co2_pc),
+            co2_pc_maximo = maximo(co2_pc),
+            desviacion_pc = desviacion(co2_pc)
+    |> FORMATION por [co2_pc_medio desc]
+
+MONITOR por_pais
+SEELE por_pais como "caso_estudio/resultados/resumen_por_pais.csv"
+
+# P3. ¿Colombia esta por encima o por debajo del promedio regional per capita?
+colombia = ultimo |> AT_FIELD donde pais == "Colombia"
+pc_colombia = media(colombia.co2_pc)
+pc_region = redondear(media(ultimo.co2_pc), 3)
+MONITOR pc_colombia
+MONITOR pc_region
+
+PATTERN_BLUE pc_colombia < pc_region {
+    MONITOR "Colombia emite menos CO2 por persona que el promedio de los 12 paises"
+} PATTERN_ORANGE {
+    MONITOR "Colombia emite mas CO2 por persona que el promedio de los 12 paises"
+}
+
+# --- 3. Graficas -----------------------------------------------------------
+# G1. Barras: emisiones totales de 2023
+HOLOGRAM barras de ultimo {
+    eje_x: pais
+    eje_y: co2_mt
+    titulo: "Emisiones de CO2 en 2023"
+    etiqueta_x: "País"
+    etiqueta_y: "Millones de toneladas de CO2"
+    archivo: "caso_estudio/resultados/g1_barras_emisiones_2023.png"
+}
+
+# G2. Lineas: como cambio el CO2 por persona en los seis que mas emiten
+grandes = co2
+    |> AT_FIELD donde pais == "Brasil" o pais == "México" o pais == "Argentina"
+                   o pais == "Venezuela" o pais == "Colombia" o pais == "Chile"
+
+HOLOGRAM lineas de grandes {
+    eje_x: año
+    eje_y: co2_pc
+    serie: pais
+    titulo: "CO2 por persona, 1970-2023"
+    etiqueta_x: "Año"
+    etiqueta_y: "Toneladas por persona"
+    archivo: "caso_estudio/resultados/g2_lineas_co2_por_persona.png"
+}
+
+# G3. Histograma: como se reparten los valores de todos los paises y años
+HOLOGRAM histograma de co2 {
+    eje_x: co2_pc
+    intervalos: 16
+    titulo: "Distribución del CO2 por persona (12 países, 1970-2023)"
+    etiqueta_x: "Toneladas por persona"
+    etiqueta_y: "Cantidad de país-año"
+    color: "verde"
+    archivo: "caso_estudio/resultados/g3_histograma_co2_por_persona.png"
+}
+
+# G4. Dispersion: ¿los paises mas ricos emiten mas por persona?
+desde_2000 = co2
+    |> AT_FIELD donde año >= 2000 y pib != nulo
+    |> SYNC pib_pc_miles = pib_pc / 1000
+
+HOLOGRAM dispersion de desde_2000 {
+    eje_x: pib_pc_miles
+    eje_y: co2_pc
+    serie: pais
+    titulo: "Riqueza contra emisiones, 2000-2022"
+    etiqueta_x: "PIB por persona (miles de dólares de 2011)"
+    etiqueta_y: "Toneladas de CO2 por persona"
+    archivo: "caso_estudio/resultados/g4_dispersion_pib_vs_co2.png"
+}
+
+# G5. Caja: como cambio la diferencia entre paises de una decada a otra
+HOLOGRAM caja de co2 {
+    eje_x: decada
+    eje_y: co2_pc
+    titulo: "CO2 por persona por década"
+    etiqueta_x: "Década"
+    etiqueta_y: "Toneladas por persona"
+    color: "morado"
+    archivo: "caso_estudio/resultados/g5_caja_por_decada.png"
+}
+
+# La misma grafica de lineas tambien sale en SVG, que se ve nitida a cualquier tamaño
+HOLOGRAM lineas de grandes {
+    eje_x: año
+    eje_y: co2_pc
+    serie: pais
+    titulo: "CO2 por persona, 1970-2023"
+    etiqueta_x: "Año"
+    etiqueta_y: "Toneladas por persona"
+    archivo: "caso_estudio/resultados/g2_lineas_co2_por_persona.svg"
+}
