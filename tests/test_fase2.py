@@ -219,10 +219,10 @@ def test_el_condicional_elige_la_rama():
     assert valor(correr(codigo % 9), "r") == 2
 
 
-def test_la_grafica_se_revisa_pero_no_se_dibuja(datos, capsys):
+def test_la_grafica_se_dibuja(datos, capsys):
     interprete = correr(CARGA + "\nHOLOGRAM barras de t { eje_x: piloto, eje_y: sincronizacion }")
-    assert interprete.graficas == ["barras"]
-    assert "fase 3" in capsys.readouterr().out
+    assert interprete.graficas == ["salidas/barras_1.png"]
+    assert "HOLOGRAM proyectó" in capsys.readouterr().out
 
 
 # --- Errores semanticos ---------------------------------------------------------
