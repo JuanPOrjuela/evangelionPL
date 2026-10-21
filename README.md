@@ -5,8 +5,8 @@
 - Santiago Ortegon
 
 Un lenguaje de dominio específico para analizar datos, con vocabulario de
-*Neon Genesis Evangelion*. Proyecto del curso **Lenguajes de Programación y
-Transducción** (Universidad Sergio Arboleda, 2026-2), hecho con ANTLR4 y Python.
+*Neon Genesis Evangelion*. Proyecto de **Lenguajes de Programación y
+Transducción** lo hicimos con ANTLR4 y Python.
 El manejo de las tablas no usa pandas ni ninguna otra librería: lo hace una
 librería propia que está en `src/evangelion/tablas.py`.
 
@@ -37,9 +37,6 @@ SEELE por_piloto como "salidas/resumen.csv"
 | 1 | Gramática, lexer y parser, árbol de análisis, errores léxicos y sintácticos | Lista |
 | 2 | Visitor, tabla de símbolos, ejecución sobre datos con la librería propia, agregaciones, exportar CSV, errores semánticos | Lista |
 | 3 | Gráficas y caso de estudio final | Pendiente (`HOLOGRAM` ya se reconoce, pero no dibuja) |
-
-El manual completo, con la tabla de tokens, la gramática en EBNF y las reglas
-semánticas, está en [`docs/manual_evangelionPL.pdf`](docs/manual_evangelionPL.pdf).
 
 ## Instalación
 
@@ -178,8 +175,6 @@ devuelve una tabla nueva. Los comentarios empiezan con `#`.
 
 Para `altas = pruebas |> AT_FIELD donde sincronizacion >= 60 |> BATTERY 5`:
 
-![Árbol de análisis](docs/arbol_ejemplo.svg)
-
 ## Estructura
 
 ```
@@ -198,7 +193,7 @@ ejemplos/             programas .eva válidos
 ejemplos/errores/     programas que deben fallar (lex_, sin_, sem_)
 datos/                CSV de práctica
 tests/                pruebas con pytest
-docs/                 manual en PDF, gramática EBNF y el script que arma el PDF
+docs/                 manual en PDF y gramática EBNF
 ```
 
 ## Librería propia
@@ -212,7 +207,7 @@ Todo lo que se hace con los datos está escrito a mano en `tablas.py`:
   faltantes, agrupar y resumir, y mostrarse alineada en la terminal.
 
 Lo único que viene de afuera es el runtime de ANTLR4, que es la herramienta que
-pide el curso, y pytest, que solo se usa para correr las pruebas.
+pide, y pytest, que solo se usa para correr las pruebas.
 
 ## Pruebas
 
@@ -226,15 +221,11 @@ de tablas por separado y los ejemplos completos de punta a punta.
 
 ## Cambiar la gramática
 
-Si se edita `grammar/Eva.g4` hay que volver a generar el lexer y el parser. Para eso sí
-hace falta Java 11 o superior:
+Si se edita `grammar/Eva.g4` hay que volver a generar el lexer y el parser. :
 
 ```
 python regenerar.py
 ```
-
-El manual se vuelve a generar con `pip install pypdf` y
-`python docs/generar_manual.py` (usa Chrome o Edge para imprimir el PDF).
 
 ## Sobre los datos
 
