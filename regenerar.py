@@ -17,7 +17,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
 SALIDA = RAIZ / "src" / "evangelion" / "generado"
-VERSION = "4.13.2"  # la misma del runtime en requirements.txt
+VERSION = "4.13.2"  # la misma del runtime que instalan instalar.bat e instalar.sh
 JAR = RAIZ / "herramientas" / f"antlr-{VERSION}-complete.jar"
 URL = f"https://repo1.maven.org/maven2/org/antlr/antlr4/{VERSION}/antlr4-{VERSION}-complete.jar"
 

@@ -46,19 +46,26 @@ estudio está en [`caso_estudio/`](caso_estudio/README.md).
 
 ## Instalación
 
-Hace falta Python 3.11 o superior. En Windows basta con:
+Hace falta Python 3.10 o superior. En Windows basta con:
 
 ```
 instalar.bat
 ```
 
-Eso crea el entorno virtual, instala las dependencias y corre las pruebas. A mano
-sería:
+En Linux (o en una máquina virtual con Ubuntu):
+
+```
+bash instalar.sh
+```
+
+Cualquiera de los dos crea el entorno virtual, instala las dependencias y corre
+las pruebas. En Ubuntu, si falta el paquete `python3-venv`, el script lo instala
+y pide la contraseña de sudo. A mano sería:
 
 ```
 python -m venv .venv
-.venv\Scripts\activate
-pip install -r requirements.txt
+.venv\Scripts\activate              (en Linux: source .venv/bin/activate)
+pip install antlr4-python3-runtime==4.13.2 pytest
 ```
 
 No se necesita Java para usar el lenguaje: el lexer y el parser ya vienen
@@ -72,7 +79,8 @@ Desde la carpeta del proyecto:
 eva ejemplos\01_primera_prueba.eva
 ```
 
-o, que es lo mismo, `python run.py ejemplos/01_primera_prueba.eva`.
+o, que es lo mismo, `python run.py ejemplos/01_primera_prueba.eva`. En Linux:
+`./eva.sh ejemplos/01_primera_prueba.eva`.
 
 | Opción | Qué muestra |
 |---|---|
@@ -207,9 +215,11 @@ Adler-32, y una letra de píxeles de 5 x 7 dibujada a mano en `fuente.py`.
 
 ## Árbol de análisis
 
-Para `altas = pruebas |> AT_FIELD donde sincronizacion >= 60 |> BATTERY 5`:
+Con `--arbol` sale en la terminal y con `--svg` queda como dibujo:
 
-![Árbol de análisis](docs/arbol_ejemplo.svg)
+```
+eva --svg arbol.svg --solo-analisis ejemplos\01_primera_prueba.eva
+```
 
 ## Estructura
 
@@ -233,7 +243,7 @@ ejemplos/errores/     programas que deben fallar (lex_, sin_, sem_)
 datos/                CSV de práctica y los datos reales del caso de estudio
 caso_estudio/         programa, documento, script de descarga y resultados del caso final
 tests/                pruebas con pytest
-docs/                 manual en PDF, gramática EBNF y el script que arma el PDF
+docs/                 manual en PDF y gramática EBNF
 ```
 
 ## Librería propia
@@ -271,9 +281,6 @@ hace falta Java 11 o superior:
 ```
 python regenerar.py
 ```
-
-El manual se vuelve a generar con `pip install pypdf` y
-`python docs/generar_manual.py` (usa Chrome o Edge para imprimir el PDF).
 
 ## Sobre los datos
 
