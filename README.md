@@ -266,7 +266,7 @@ herramienta que pide el curso, y pytest, que solo se usa para correr las pruebas
 python -m pytest
 ```
 
-Son 208 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 212 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco
