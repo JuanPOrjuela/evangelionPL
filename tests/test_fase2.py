@@ -270,6 +270,20 @@ def test_division_por_cero(datos):
     assert t["x"].valores == [None, 5.0, -10.0, None, 100 / 30]
 
 
+@pytest.mark.parametrize("expresion, mensaje", [("0 ^ -1", "división por cero"),
+                                                ("10.0 ^ 400", "demasiado grande"),
+                                                ("(-8) ^ 0.5", "negativo")])
+def test_potencias_imposibles(expresion, mensaje):
+    assert mensaje in falla(f"x = {expresion}")
+
+
+def test_potencias_imposibles_en_columnas(datos):
+    # igual que la division por cero: en una columna el dato queda faltante
+    t = valor(correr(CARGA + " |> SYNC x = (0 - sincronizacion) ^ 0.5, z = 0 ^ (sincronizacion - 200)"), "t")
+    assert all(v is None for v in t["x"].valores)
+    assert all(v is None for v in t["z"].valores)
+
+
 def test_una_etapa_necesita_una_tabla():
     assert "solo funciona sobre una tabla" in falla("x = 5 |> BATTERY 2")
 

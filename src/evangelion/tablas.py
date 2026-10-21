@@ -64,9 +64,11 @@ class Columna:
                 resultado.append(si_falta)
                 continue
             try:
-                resultado.append(funcion(a, b))
+                r = funcion(a, b)
             except (ZeroDivisionError, OverflowError):
-                resultado.append(None)   # una division por cero deja el dato como faltante
+                r = None   # una division por cero deja el dato como faltante
+            # la raiz de un negativo daria un complejo: tampoco es un dato valido
+            resultado.append(None if isinstance(r, complex) else r)
         return Columna(resultado)
 
     def __add__(self, otro): return self._con(otro, lambda a, b: a + b)

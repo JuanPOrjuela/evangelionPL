@@ -512,7 +512,18 @@ class Interprete(EvaVisitor):
     def visitExprPotencia(self, ctx):
         a, b, _ = self._operandos(ctx)
         self._exigir(ctx, "^", "numero", a, b)
-        return a ** b
+        if isinstance(a, Columna) or isinstance(b, Columna):
+            return a ** b
+        try:
+            resultado = a ** b
+        except ZeroDivisionError:
+            raise ErrorSemantico(ctx, "cero elevado a un número negativo es una división por cero.")
+        except OverflowError:
+            raise ErrorSemantico(ctx, "el resultado de la potencia es demasiado grande.")
+        # Python devuelve un numero complejo, pero el lenguaje solo maneja reales
+        if isinstance(resultado, complex):
+            raise ErrorSemantico(ctx, "un número negativo no se puede elevar a una potencia con decimales.")
+        return resultado
 
     def visitExprNegativo(self, ctx):
         valor = self.visit(ctx.expresion())
