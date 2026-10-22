@@ -2,7 +2,7 @@
 // y abajo las lexicas (en mayuscula), todo en un solo archivo.
 grammar Eva;
 
-// ============================ Reglas sintacticas ============================
+// Reglas sintacticas
 
 // El EOF obliga a leer todo el archivo, asi no se cuela basura al final
 programa : cabecera? sentencia* EOF ;
@@ -77,7 +77,7 @@ literal : ENTERO | REAL | CADENA | VERDADERO | FALSO | NULO ;
 
 nombre : ID | ID_ESCAPADO ;
 
-// ============================== Reglas lexicas ==============================
+// Reglas lexicas 
 
 // --- Instrucciones (van antes que ID para que ganen el empate) ---
 NERV           : 'NERV' ;

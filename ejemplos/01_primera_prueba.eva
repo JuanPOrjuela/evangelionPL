@@ -1,4 +1,4 @@
-# Mi primer programa: cargar las pruebas y ver las cinco mejores
+# Primer cargar las pruebas y ver las cinco mejores
 NERV "Primera prueba de sincronizacion"
 
 pruebas = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
