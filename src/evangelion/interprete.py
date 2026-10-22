@@ -399,6 +399,27 @@ class Interprete(EvaVisitor):
         return Tabla.de_registros(filas, ["columna", "clase", "validos", "faltantes", "distintos",
                                           "media", "desviacion", "minimo", "maximo"])
 
+    def visitEtapaProfecia(self, ctx):
+        tabla = self._tabla_de_entrada(ctx)
+        objetivo = self._columna(tabla, ctx.nombre())
+        predictoras = self._columnas(tabla, ctx.listaColumnas())
+        for columna in predictoras:
+            if not encaja(tabla[columna], "numero"):
+                raise ErrorSemantico(ctx.listaColumnas(), "tipos incompatibles: PROFECIA necesita números en "
+                                     f"las columnas predictoras y '{columna}' es {describir(tabla[columna])}.")
+        if objetivo in predictoras:
+            raise ErrorSemantico(ctx.nombre(), f"'{objetivo}' no puede ser a la vez el objetivo y una predictora.")
+
+        k = int(ctx.ENTERO().getText())
+        if k < 1:
+            raise ErrorSemantico(ctx.ENTERO().symbol, "VECINOS necesita un número de al menos 1.")
+        if k >= len(tabla):
+            raise ErrorSemantico(ctx.ENTERO().symbol, f"VECINOS pide {k} pero la tabla solo tiene "
+                                                       f"{len(tabla)} filas.")
+
+        prediccion = tabla.predecir_knn(objetivo, predictoras, k)
+        return tabla.con_columna(f"{objetivo}_prediccion", prediccion)
+
     # --- Expresiones ---------------------------------------------------------
 
     def _exigir(self, ctx, operador: str, clase: str, *valores) -> None:

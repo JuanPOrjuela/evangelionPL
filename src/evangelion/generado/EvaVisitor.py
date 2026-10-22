@@ -144,6 +144,11 @@ class EvaVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by EvaParser#etapaProfecia.
+    def visitEtapaProfecia(self, ctx:EvaParser.EtapaProfeciaContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by EvaParser#columnaNueva.
     def visitColumnaNueva(self, ctx:EvaParser.ColumnaNuevaContext):
         return self.visitChildren(ctx)

@@ -46,6 +46,7 @@ etapa
     | MAGI agregacion ( COMA agregacion )*                      # etapaResumir
     | BATTERY ENTERO                                            # etapaLimitar
     | DIAGNOSTIC                                                # etapaDiagnostico
+    | PROFECIA nombre POR listaColumnas VECINOS ENTERO          # etapaProfecia
     ;
 
 columnaNueva  : nombre IGUAL expresion ;
@@ -100,6 +101,7 @@ SQUAD      : 'SQUAD' ;
 MAGI       : 'MAGI' ;
 BATTERY    : 'BATTERY' ;
 DIAGNOSTIC : 'DIAGNOSTIC' ;
+PROFECIA   : 'PROFECIA' ;
 
 // --- Conectores ---
 DONDE      : 'donde' ;
@@ -112,6 +114,7 @@ DESC       : 'desc' ;
 DUPLICADOS : 'duplicados' ;
 FALTANTES  : 'faltantes' ;
 COLUMNAS   : 'columnas' ;
+VECINOS    : 'vecinos' ;
 
 // --- Operadores logicos y literales fijos ---
 Y         : 'y' ;
