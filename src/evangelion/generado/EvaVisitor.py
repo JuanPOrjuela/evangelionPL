@@ -29,6 +29,11 @@ class EvaVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by EvaParser#indice.
+    def visitIndice(self, ctx:EvaParser.IndiceContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by EvaParser#mostrar.
     def visitMostrar(self, ctx:EvaParser.MostrarContext):
         return self.visitChildren(ctx)
@@ -46,6 +51,21 @@ class EvaVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by EvaParser#condicional.
     def visitCondicional(self, ctx:EvaParser.CondicionalContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by EvaParser#mientras.
+    def visitMientras(self, ctx:EvaParser.MientrasContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by EvaParser#para.
+    def visitPara(self, ctx:EvaParser.ParaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by EvaParser#llamada.
+    def visitLlamada(self, ctx:EvaParser.LlamadaContext):
         return self.visitChildren(ctx)
 
 
@@ -169,6 +189,11 @@ class EvaVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by EvaParser#exprLista.
+    def visitExprLista(self, ctx:EvaParser.ExprListaContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by EvaParser#exprY.
     def visitExprY(self, ctx:EvaParser.ExprYContext):
         return self.visitChildren(ctx)
@@ -184,6 +209,11 @@ class EvaVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by EvaParser#exprIndice.
+    def visitExprIndice(self, ctx:EvaParser.ExprIndiceContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by EvaParser#exprParentesis.
     def visitExprParentesis(self, ctx:EvaParser.ExprParentesisContext):
         return self.visitChildren(ctx)
@@ -196,6 +226,11 @@ class EvaVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by EvaParser#exprLlamada.
     def visitExprLlamada(self, ctx:EvaParser.ExprLlamadaContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by EvaParser#exprDiccionario.
+    def visitExprDiccionario(self, ctx:EvaParser.ExprDiccionarioContext):
         return self.visitChildren(ctx)
 
 
@@ -236,6 +271,11 @@ class EvaVisitor(ParseTreeVisitor):
 
     # Visit a parse tree produced by EvaParser#exprNo.
     def visitExprNo(self, ctx:EvaParser.ExprNoContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by EvaParser#par.
+    def visitPar(self, ctx:EvaParser.ParContext):
         return self.visitChildren(ctx)
 
 

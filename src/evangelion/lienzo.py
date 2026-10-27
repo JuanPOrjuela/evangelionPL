@@ -6,7 +6,6 @@ compresor DEFLATE y sus propios CRC-32 y Adler-32; LienzoSVG escribe las mismas
 figuras como texto SVG. Las graficas no saben en cual de los dos estan dibujando.
 """
 
-import struct
 from html import escape
 
 from .fuente import ALTO, AVANCE, ancho_texto, pixeles_de
@@ -131,7 +130,7 @@ class LienzoPNG:
             crudo += self.pixeles[y * self.ancho:(y + 1) * self.ancho]
         paleta = b"".join(bytes(rgb) for rgb in self._paleta)
         # 8 bits por pixel, tipo de color 3 = con paleta
-        cabecera = struct.pack(">IIBBBBB", self.ancho, self.alto, 8, 3, 0, 0, 0)
+        cabecera = self.ancho.to_bytes(4, "big") + self.alto.to_bytes(4, "big") + bytes([8, 3, 0, 0, 0])
         return (b"\x89PNG\r\n\x1a\n" + _bloque(b"IHDR", cabecera) + _bloque(b"PLTE", paleta)
                 + _bloque(b"IDAT", zlib_comprimir(bytes(crudo), self.ancho + 1)) + _bloque(b"IEND", b""))
 
@@ -222,7 +221,7 @@ def adler32(datos: bytes) -> int:
 
 def _bloque(tipo: bytes, datos: bytes) -> bytes:
     """Un bloque PNG: largo, tipo, datos y el CRC de tipo + datos."""
-    return struct.pack(">I", len(datos)) + tipo + datos + struct.pack(">I", crc32(tipo + datos))
+    return len(datos).to_bytes(4, "big") + tipo + datos + crc32(tipo + datos).to_bytes(4, "big")
 
 
 # --- DEFLATE con los codigos de Huffman fijos (RFC 1951, seccion 3.2.6) ---------
@@ -349,4 +348,4 @@ def deflate(datos: bytes, fila: int = 0) -> bytes:
 
 def zlib_comprimir(datos: bytes, fila: int = 0) -> bytes:
     """El formato zlib que pide PNG: dos bytes de cabecera, DEFLATE y el Adler-32."""
-    return b"\x78\x01" + deflate(datos, fila) + struct.pack(">I", adler32(datos))
+    return b"\x78\x01" + deflate(datos, fila) + adler32(datos).to_bytes(4, "big")

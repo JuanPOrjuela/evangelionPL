@@ -1,0 +1,64 @@
+# Variables, listas, diccionarios, ciclos y matematicas propias,
+# escrito con las palabras en espanol (las de Evangelion tambien sirven)
+programa "Listas, ciclos y matematicas"
+
+# --- Listas y diccionarios ---
+pilotos = ["Shinji", "Asuka", "Rei"]
+agregar(pilotos, "Mari")
+mostrar pilotos
+mostrar longitud(pilotos)
+mostrar pilotos[0]
+mostrar pilotos[-1]
+
+edades = {"Shinji": 14, "Asuka": 14, "Rei": 14}
+edades["Mari"] = 15
+mostrar edades
+mostrar claves(edades)
+
+# --- Ciclos ---
+total = 0
+para i desde 1 hasta 10 {
+    total = total + i
+}
+mostrar total
+
+para piloto en pilotos {
+    si edades[piloto] > 14 {
+        mostrar piloto + " es la mayor"
+    }
+}
+
+# mientras: cuantas veces hay que doblar 1 para pasar de 1000
+n = 1
+veces = 0
+mientras n <= 1000 {
+    n = n * 2
+    veces = veces + 1
+}
+mostrar veces
+
+# sino si encadena condiciones
+nota = 4.2
+si nota >= 4.5 {
+    mostrar "excelente"
+} sino si nota >= 3 {
+    mostrar "aprobado"
+} sino {
+    mostrar "reprobado"
+}
+
+# --- Matematicas propias (sin la libreria math) ---
+mostrar raiz(2)
+mostrar raiz(27, 3)
+mostrar sen(pi / 2)
+mostrar redondear(cos(pi), 4)
+mostrar ln(e)
+mostrar log(1000)
+mostrar factorial(10)
+
+# --- Listas como vectores, igual que NumPy ---
+precios = [100, 250, 80]
+mostrar precios * 1.19
+mostrar media(precios)
+mostrar [1, 2, 3] + [10, 20, 30]
+mostrar raiz([4, 9, 16])

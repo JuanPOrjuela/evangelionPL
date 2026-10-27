@@ -29,8 +29,16 @@ class ErrorSemantico(Exception):
         super().__init__(mensaje)
 
 
-# Las palabras reservadas salen del lexer generado: 'MAGI', 'donde', ...
-RESERVADAS = {n[1:-1] for n in EvaLexer.literalNames if n[1:-1].replace("_", "").isalpha()}
+# Las instrucciones que tienen dos nombres (Evangelion y espanol)
+ALIAS = {"NERV": "programa", "ENTRY_PLUG": "cargar", "MONITOR": "mostrar", "SEELE": "guardar",
+         "HOLOGRAM": "graficar", "PATTERN_BLUE": "si", "PATTERN_ORANGE": "sino",
+         "TARGET": "seleccionar", "AT_FIELD": "filtrar", "SYNC": "crear", "CODENAME": "renombrar",
+         "FORMATION": "ordenar", "EJECT": "quitar", "DUMMY_PLUG": "rellenar", "EQUIP": "convertir",
+         "SQUAD": "agrupar", "MAGI": "resumir", "BATTERY": "limitar", "DIAGNOSTIC": "diagnosticar"}
+
+# Las palabras reservadas salen del lexer generado: 'MAGI', 'donde', ... mas los alias
+RESERVADAS = ({n[1:-1] for n in EvaLexer.literalNames if n[1:-1].replace("_", "").isalpha()}
+              | set(ALIAS) | set(ALIAS.values()))
 
 # Como se le dice a cada token cuando ANTLR lo nombra en un mensaje
 NOMBRES = {
@@ -41,6 +49,7 @@ NOMBRES = {
     "REAL": "un número con decimales",
     "<EOF>": "el final del archivo",
     "EOF": "el final del archivo",
+    **{eva: f"'{es}' ({eva})" for eva, es in ALIAS.items()},
 }
 
 
@@ -95,10 +104,11 @@ def _esperado(crudo: str) -> str:
     opciones = [o.strip() for o in crudo.split(", ")]
 
     # Si ANTLR lista muchas opciones el mensaje no se entiende, mejor resumir
-    if "'TARGET'" in opciones:
-        return "una etapa (TARGET, AT_FIELD, SYNC, SQUAD, MAGI...)"
-    if "'MONITOR'" in opciones:
-        return "una instrucción (una asignación, MONITOR, SEELE, HOLOGRAM o PATTERN_BLUE)"
+    if "TARGET" in opciones:
+        return "una etapa (seleccionar, filtrar, crear, agrupar, resumir... o TARGET, AT_FIELD, SYNC, SQUAD, MAGI...)"
+    if "MONITOR" in opciones:
+        return ("una instrucción (una asignación, mostrar, guardar, graficar, si, mientras, para... "
+                "o MONITOR, SEELE, HOLOGRAM, PATTERN_BLUE)")
     if len(opciones) > 8:
         return "un valor o una expresión"
 

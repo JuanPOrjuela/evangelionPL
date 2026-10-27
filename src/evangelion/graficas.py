@@ -5,12 +5,12 @@ escalas, los ejes, la leyenda y las figuras. Las filas a las que les falta algun
 dato de los ejes se saltan.
 """
 
-import math
 from dataclasses import dataclass
 from pathlib import Path
 
 from .fuente import ALTO, ancho_texto
 from .lienzo import LienzoPNG, LienzoSVG, color_rgb
+from .matematica import piso, piso_log10, techo, techo_log2
 from .tablas import Columna, es_numero, formatear
 
 TIPOS = ("barras", "lineas", "histograma", "dispersion", "caja")
@@ -110,7 +110,7 @@ def _unicos(valores) -> list:
 def cuantil(ordenados: list, q: float) -> float:
     """Cuantil con interpolacion lineal entre los dos datos vecinos."""
     posicion = (len(ordenados) - 1) * q
-    abajo = math.floor(posicion)
+    abajo = piso(posicion)
     arriba = min(abajo + 1, len(ordenados) - 1)
     return ordenados[abajo] + (ordenados[arriba] - ordenados[abajo]) * (posicion - abajo)
 
@@ -120,10 +120,10 @@ def marcas(minimo: float, maximo: float, cuantas: int = 5) -> list:
     if minimo == maximo:
         minimo, maximo = (minimo - 1, maximo + 1) if minimo != 0 else (0, 1)
     crudo = (maximo - minimo) / cuantas
-    potencia = 10 ** math.floor(math.log10(crudo))
+    potencia = 10.0 ** piso_log10(crudo)
     paso = next(m * potencia for m in (1, 2, 2.5, 5, 10) if m * potencia >= crudo)
-    inicio = math.floor(minimo / paso + 1e-9) * paso
-    fin = math.ceil(maximo / paso - 1e-9) * paso
+    inicio = piso(minimo / paso + 1e-9) * paso
+    fin = techo(maximo / paso - 1e-9) * paso
     return [inicio + k * paso for k in range(round((fin - inicio) / paso) + 1)]
 
 
@@ -351,7 +351,7 @@ def _lineas(lienzo, g, filas):
 def _histograma(lienzo, g, filas):
     datos = sorted(f[0] for f in filas)
     # regla de Sturges si no se dice cuantos intervalos
-    intervalos = g.intervalos or math.ceil(math.log2(len(datos))) + 1
+    intervalos = g.intervalos or techo_log2(len(datos)) + 1
     minimo, maximo = datos[0], datos[-1]
     if minimo == maximo:
         minimo, maximo = minimo - 0.5, maximo + 0.5

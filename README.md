@@ -38,6 +38,7 @@ SEELE por_piloto como "salidas/resumen.csv"
 | 1 | Gramática, lexer y parser, árbol de análisis, errores léxicos y sintácticos | Lista |
 | 2 | Visitor, tabla de símbolos, ejecución sobre datos con la librería propia, agregaciones, exportar CSV, errores semánticos | Lista |
 | 3 | Cinco tipos de gráfica en PNG o SVG con títulos, ejes y leyendas, caso de estudio con datos reales y pruebas de regresión | Lista |
+| 3 (segunda parte) | Palabras en español, `sino si`, ciclos `mientras` y `para`, listas y diccionarios, y librerías propias de matemáticas, matrices y aprendizaje automático (regresión, clasificación y agrupamiento) | Lista |
 
 El manual completo (de usuario y técnico), con la tabla de tokens, la gramática en
 EBNF, las reglas semánticas, cómo se dibujan las gráficas y el reporte de pruebas,
@@ -161,26 +162,68 @@ Siempre dicen la línea y la columna.
 
 ## Instrucciones
 
-| Instrucción | Qué hace |
+Cada instrucción se puede escribir con su nombre de Evangelion o con una palabra
+en español; las dos hacen lo mismo y se pueden mezclar en un programa.
+
+| Evangelion | Español | Qué hace |
+|---|---|---|
+| `NERV "título"` | `programa "título"` | Nombre de la operación (opcional, primera línea) |
+| `ENTRY_PLUG "archivo.csv"` | `cargar "archivo.csv"` | Carga un CSV. Acepta `con { separador: ";" }` |
+| `TARGET [a, b]` | `seleccionar [a, b]` | Deja solo esas columnas |
+| `AT_FIELD donde condición` | `filtrar donde condición` | Filtra filas |
+| `SYNC col = expresión` | `crear col = expresión` | Crea columnas calculadas |
+| `CODENAME [vieja -> nueva]` | `renombrar [vieja -> nueva]` | Renombra columnas |
+| `FORMATION por [col desc]` | `ordenar por [col desc]` | Ordena |
+| `EJECT duplicados \| faltantes \| columnas` | `quitar ...` | Elimina filas repetidas, filas con vacíos o columnas |
+| `DUMMY_PLUG col = valor` | `rellenar col = valor` | Rellena vacíos |
+| `EQUIP col -> tipo` | `convertir col -> tipo` | Convierte a entero, real, texto o booleano |
+| `SQUAD por [a, b]` | `agrupar por [a, b]` | Agrupa (después va `resumir`) |
+| `MAGI n = contar()` | `resumir n = contar()` | Resume: suma, media, mediana, minimo, maximo, desviacion, contar |
+| `BATTERY n` | `limitar n` | Primeras n filas |
+| `DIAGNOSTIC` | `diagnosticar` | Estadísticas de cada columna |
+| `MONITOR flujo` | `mostrar flujo` | Muestra en pantalla |
+| `SEELE flujo como "a.csv"` | `guardar flujo como "a.csv"` | Guarda en CSV |
+| `PATTERN_BLUE c { } PATTERN_ORANGE { }` | `si c { } sino si c2 { } sino { }` | Condicional |
+| `HOLOGRAM tipo de flujo { }` | `graficar tipo de flujo { }` | Dibuja una gráfica y la guarda en PNG o SVG |
+| | `mientras c { }` | Repite mientras la condición sea verdadera |
+| | `para i desde 1 hasta 10 { }` | Repite con un contador (incluye los dos extremos) |
+| | `para x en lista { }` | Recorre una lista, un texto, las claves de un diccionario o las filas de una tabla |
+
+### Listas y diccionarios
+
+```
+pilotos = ["Shinji", "Asuka"]          # lista
+agregar(pilotos, "Rei")
+mostrar pilotos[0]                     # las posiciones empiezan en 0; -1 es el último
+edades = {"Shinji": 14, Asuka: 14}     # diccionario (la clave puede ir sin comillas)
+edades["Rei"] = 14
+mostrar edades.Shinji                  # igual que edades["Shinji"]
+mostrar [1, 2, 3] * 2                  # las cuentas con listas van elemento por elemento, como NumPy
+```
+
+Funciones de listas: `longitud`, `agregar`, `sacar`, `contiene`, `rango`, `ordenada`,
+`invertida`, `unir`, `claves`, `valores`, `texto`, `numero`, `columna(tabla, "col")`,
+`tabla_de({...})`, `aleatorio`, `semilla`. Las agregaciones (`suma`, `media`, ...)
+también reciben listas.
+
+### Matemáticas, matrices y modelos
+
+| Librería | Funciones |
 |---|---|
-| `NERV "título"` | Nombre de la operación (opcional, primera línea) |
-| `ENTRY_PLUG "archivo.csv"` | Carga un CSV. Acepta `con { separador: ";" }` |
-| `TARGET [a, b]` | Deja solo esas columnas |
-| `AT_FIELD donde condición` | Filtra filas |
-| `SYNC col = expresión` | Crea columnas calculadas |
-| `CODENAME [vieja -> nueva]` | Renombra columnas |
-| `FORMATION por [col desc]` | Ordena |
-| `EJECT duplicados \| faltantes \| columnas` | Elimina filas repetidas, filas con vacíos o columnas |
-| `DUMMY_PLUG col = valor` | Rellena vacíos |
-| `EQUIP col -> tipo` | Convierte a entero, real, texto o booleano |
-| `SQUAD por [a, b]` | Agrupa (después va `MAGI`) |
-| `MAGI n = contar(), m = media(col)` | Resume: suma, media, mediana, minimo, maximo, desviacion, contar |
-| `BATTERY n` | Primeras n filas |
-| `DIAGNOSTIC` | Estadísticas de cada columna |
-| `MONITOR flujo` | Muestra en pantalla |
-| `SEELE flujo como "archivo.csv"` | Guarda en CSV |
-| `PATTERN_BLUE cond { } PATTERN_ORANGE { }` | Condicional |
-| `HOLOGRAM tipo de flujo { opciones }` | Dibuja una gráfica y la guarda en PNG o SVG |
+| Matemáticas (`matematica.py`) | `raiz(x)`, `raiz(x, n)`, `exp`, `ln`, `log(x)`, `log(x, base)`, `sen`, `cos`, `tan`, `piso`, `techo`, `factorial`, `redondear`, `absoluto`, y las constantes `pi` y `e` |
+| Matrices (`matrices.py`) | `ceros`, `unos`, `identidad`, `transpuesta`, `producto`, `punto`, `determinante`, `inversa`, `resolver(A, b)`, `forma`, `norma` |
+| Aprendizaje (`aprendizaje.py`) | `regresion(tabla, variables, objetivo)`, `clasificar(tabla, variables, objetivo, k)`, `predecir(modelo, tabla)`, `grupos(tabla, variables, k)`, `dividir(tabla, 0.8)`, `error_cuadratico`, `r2`, `exactitud` |
+
+```
+partes = dividir(datos, 0.8)
+modelo = regresion(partes[0], ["energia", "pib"], "co2")
+mostrar modelo.r2
+resultado = predecir(modelo, partes[1])         # agrega la columna prediccion
+agrupados = grupos(datos, ["co2", "energia"], 3)  # agrega la columna grupo
+```
+
+Los ejemplos `06_listas_ciclos_y_matematicas.eva` y `07_matrices_y_modelos.eva`
+muestran todo esto.
 
 Las etapas se encadenan con `|>` y ninguna cambia la tabla original: cada una
 devuelve una tabla nueva. Los comentarios empiezan con `#`.
@@ -229,6 +272,9 @@ src/evangelion/
     analizador.py     fase 1: tokens y árbol
     interprete.py     fase 2: Visitor que revisa y ejecuta el programa
     tablas.py         librería propia: tablas, columnas, estadísticas y CSV
+    matematica.py     librería propia: raíz, exp, ln, seno, coseno, piso, azar...
+    matrices.py       librería propia: vectores y matrices (como NumPy)
+    aprendizaje.py    librería propia: regresión, k vecinos y k-medias
     graficas.py       fase 3: ejes, escalas, leyenda y los cinco tipos de gráfica
     lienzo.py         fase 3: dibujo en píxeles, formato PNG y SVG
     fuente.py         la letra de píxeles de las gráficas
@@ -257,7 +303,11 @@ Todo lo que se hace con los datos está escrito a mano en `tablas.py`:
   faltantes, agrupar y resumir, y mostrarse alineada en la terminal.
 
 Lo mismo con las gráficas: escalas, cuartiles, dibujo, letra y formato PNG están
-escritos a mano. Lo único que viene de afuera es el runtime de ANTLR4, que es la
+escritos a mano. Las matemáticas no usan el módulo `math`: la raíz sale del método
+de Newton, `exp`, `ln`, seno y coseno de series de Taylor, y el azar de un generador
+congruencial con semilla. Las matrices se invierten y los sistemas se resuelven con
+eliminación de Gauss-Jordan, la regresión con las ecuaciones normales, la
+clasificación con k vecinos y el agrupamiento con k-medias. Lo único que viene de afuera es el runtime de ANTLR4, que es la
 herramienta que pide el curso, y pytest, que solo se usa para correr las pruebas.
 
 ## Pruebas
@@ -266,11 +316,14 @@ herramienta que pide el curso, y pytest, que solo se usa para correr las pruebas
 python -m pytest
 ```
 
-Son 212 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 278 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco
 tipos de gráfica, las opciones de `HOLOGRAM` y el caso de estudio completo. Las
+matemáticas propias se comparan contra `math` de Python (solo dentro de las
+pruebas) y hay una prueba que revisa que ningún archivo del lenguaje importe
+`math`, `numpy`, `pandas` ni `matplotlib`. Las
 pruebas de las fases 1 y 2 siguen corriendo, así que sirven de regresión.
 
 ## Cambiar la gramática

@@ -15,13 +15,23 @@ sentencia
     | guardar
     | graficar
     | condicional
+    | mientras
+    | para
+    | llamada
     ;
 
-asignacion  : nombre IGUAL flujo ;
+// lista[0] = 5 o datos["clave"] = 5 cambian un elemento por dentro
+asignacion  : nombre indice* IGUAL flujo ;
+indice      : COR_IZQ expresion COR_DER ;
 mostrar     : MONITOR flujo ;
 guardar     : SEELE flujo COMO CADENA ;
 graficar    : HOLOGRAM ID DE flujo ( LLAVE_IZQ opcion* LLAVE_DER )? ;
-condicional : PATTERN_BLUE expresion bloque ( PATTERN_ORANGE bloque )? ;
+// "sino si" encadena varias condiciones sin tener que anidar llaves
+condicional : PATTERN_BLUE expresion bloque ( PATTERN_ORANGE ( condicional | bloque ) )? ;
+mientras    : MIENTRAS expresion bloque ;
+para        : PARA nombre ( EN expresion | DESDE expresion HASTA expresion ) bloque ;
+// una funcion que se llama sola, por ejemplo agregar(lista, 4)
+llamada     : ID PAR_IZQ ( expresion ( COMA expresion )* )? PAR_DER ;
 bloque      : LLAVE_IZQ sentencia* LLAVE_DER ;
 
 // Un flujo es una fuente y despues las etapas que se le encadenan con |>
@@ -59,6 +69,7 @@ expresion
     : PAR_IZQ expresion PAR_DER                                         # exprParentesis
     | ID PAR_IZQ ( expresion ( COMA expresion )* )? PAR_DER             # exprLlamada
     | nombre PUNTO nombre                                               # exprColumnaDe
+    | expresion COR_IZQ expresion COR_DER                               # exprIndice
     | <assoc=right> expresion POTENCIA expresion                        # exprPotencia
     | MENOS expresion                                                   # exprNegativo
     | expresion ( POR_OP | DIV | MODULO ) expresion                     # exprMultiplicativa
@@ -68,9 +79,13 @@ expresion
     | NO expresion                                                      # exprNo
     | expresion Y expresion                                             # exprY
     | expresion O expresion                                             # exprO
+    | COR_IZQ ( expresion ( COMA expresion )* COMA? )? COR_DER           # exprLista
+    | LLAVE_IZQ ( par ( COMA par )* COMA? )? LLAVE_DER                   # exprDiccionario
     | literal                                                           # exprLiteral
     | nombre                                                            # exprNombre
     ;
+
+par     : ( CADENA | nombre ) DOS_PUNTOS expresion ;
 
 literal : ENTERO | REAL | CADENA | VERDADERO | FALSO | NULO ;
 
@@ -79,27 +94,35 @@ nombre : ID | ID_ESCAPADO ;
 // Reglas lexicas 
 
 // --- Instrucciones (van antes que ID para que ganen el empate) ---
-NERV           : 'NERV' ;
-ENTRY_PLUG     : 'ENTRY_PLUG' ;
-MONITOR        : 'MONITOR' ;
-SEELE          : 'SEELE' ;
-HOLOGRAM       : 'HOLOGRAM' ;
-PATTERN_BLUE   : 'PATTERN_BLUE' ;
-PATTERN_ORANGE : 'PATTERN_ORANGE' ;
+// Cada una se puede escribir con su nombre de Evangelion o con una palabra en espanol
+NERV           : 'NERV' | 'programa' ;
+ENTRY_PLUG     : 'ENTRY_PLUG' | 'cargar' ;
+MONITOR        : 'MONITOR' | 'mostrar' ;
+SEELE          : 'SEELE' | 'guardar' ;
+HOLOGRAM       : 'HOLOGRAM' | 'graficar' ;
+PATTERN_BLUE   : 'PATTERN_BLUE' | 'si' ;
+PATTERN_ORANGE : 'PATTERN_ORANGE' | 'sino' ;
 
 // --- Etapas del flujo ---
-TARGET     : 'TARGET' ;
-AT_FIELD   : 'AT_FIELD' ;
-SYNC       : 'SYNC' ;
-CODENAME   : 'CODENAME' ;
-FORMATION  : 'FORMATION' ;
-EJECT      : 'EJECT' ;
-DUMMY_PLUG : 'DUMMY_PLUG' ;
-EQUIP      : 'EQUIP' ;
-SQUAD      : 'SQUAD' ;
-MAGI       : 'MAGI' ;
-BATTERY    : 'BATTERY' ;
-DIAGNOSTIC : 'DIAGNOSTIC' ;
+TARGET     : 'TARGET' | 'seleccionar' ;
+AT_FIELD   : 'AT_FIELD' | 'filtrar' ;
+SYNC       : 'SYNC' | 'crear' ;
+CODENAME   : 'CODENAME' | 'renombrar' ;
+FORMATION  : 'FORMATION' | 'ordenar' ;
+EJECT      : 'EJECT' | 'quitar' ;
+DUMMY_PLUG : 'DUMMY_PLUG' | 'rellenar' ;
+EQUIP      : 'EQUIP' | 'convertir' ;
+SQUAD      : 'SQUAD' | 'agrupar' ;
+MAGI       : 'MAGI' | 'resumir' ;
+BATTERY    : 'BATTERY' | 'limitar' ;
+DIAGNOSTIC : 'DIAGNOSTIC' | 'diagnosticar' ;
+
+// --- Ciclos ---
+MIENTRAS   : 'mientras' ;
+PARA       : 'para' ;
+EN         : 'en' ;
+DESDE      : 'desde' ;
+HASTA      : 'hasta' ;
 
 // --- Conectores ---
 DONDE      : 'donde' ;

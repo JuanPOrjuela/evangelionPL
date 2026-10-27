@@ -1,11 +1,12 @@
-"""Fase 2: el Visitor recorre el arbol y ejecuta el programa con nuestra libreria de tablas."""
+"""El Visitor recorre el arbol y ejecuta el programa con nuestras librerias:
+tablas (datos), matematica, matrices, aprendizaje (modelos) y graficas."""
 
 import operator
 import re
 from dataclasses import dataclass
 from pathlib import Path
 
-from . import graficas
+from . import aprendizaje, graficas, matematica, matrices
 from .errores import ErrorSemantico
 from .generado.EvaParser import EvaParser
 from .generado.EvaVisitor import EvaVisitor
@@ -17,6 +18,27 @@ AGREGACIONES = ("suma", "media", "mediana", "minimo", "maximo", "desviacion", "c
 SOLO_NUMEROS = {"suma", "media", "mediana", "desviacion"}
 FUNCIONES = {"filas": (1, 1), "redondear": (1, 2), "absoluto": (1, 1),
              "mayusculas": (1, 1), "minusculas": (1, 1), "reemplazar": (3, 3)}
+# Matematicas de un solo numero; tambien sirven con columnas y listas
+MATEMATICAS = {"raiz": matematica.raiz, "exp": matematica.exp, "ln": matematica.ln,
+               "log": matematica.log, "sen": matematica.sen, "cos": matematica.cos,
+               "tan": matematica.tan, "piso": matematica.piso, "techo": matematica.techo,
+               "factorial": matematica.factorial}
+DOS_ARGUMENTOS = {"raiz", "log"}   # raiz(x, 3) y log(x, 2)
+LISTAS = {"longitud": (1, 1), "agregar": (2, 2), "sacar": (1, 2), "contiene": (2, 2),
+          "rango": (1, 3), "ordenada": (1, 1), "invertida": (1, 1), "unir": (2, 2),
+          "claves": (1, 1), "valores": (1, 1), "texto": (1, 1), "numero": (1, 1),
+          "columna": (2, 2), "tabla_de": (1, 1), "aleatorio": (0, 2), "semilla": (1, 1)}
+MATRICES = {"ceros": (1, 2), "unos": (1, 2), "identidad": (1, 1), "transpuesta": (1, 1),
+            "producto": (2, 2), "punto": (2, 2), "determinante": (1, 1), "inversa": (1, 1),
+            "resolver": (2, 2), "forma": (1, 1), "norma": (1, 1)}
+MODELOS = {"regresion": (3, 3), "clasificar": (3, 4), "predecir": (2, 2), "grupos": (3, 4),
+           "dividir": (1, 3), "error_cuadratico": (2, 2), "r2": (2, 2), "exactitud": (2, 2)}
+TODAS = {**FUNCIONES, **{n: (1, 2 if n in DOS_ARGUMENTOS else 1) for n in MATEMATICAS},
+         **LISTAS, **MATRICES, **MODELOS}
+SIN_RESULTADO = ("agregar", "semilla")   # cambian algo y no devuelven nada
+CONSTANTES = {"pi": matematica.PI, "e": matematica.E}
+MAX_VUELTAS = 1_000_000   # un ciclo que da mas vueltas seguramente nunca termina
+ELEMENTOS_EN_PANTALLA = 20
 TIPOS = ("entero", "real", "texto", "booleano")
 GRAFICAS = graficas.TIPOS
 OPCIONES_CARGA = ("separador", "codificacion", "encabezado")
@@ -47,6 +69,10 @@ def clase_de(valor) -> str:
         return "nulo"
     if isinstance(valor, bool):
         return "booleano"
+    if isinstance(valor, list):
+        return "lista"
+    if isinstance(valor, dict):
+        return "diccionario"
     return "numero" if es_numero(valor) else "texto"
 
 
@@ -61,7 +87,8 @@ def describir(valor) -> str:
         return {"numero": "una columna de números", "texto": "una columna de texto",
                 "booleano": "una columna de verdadero/falso", "nulo": "una columna vacía"}[clase]
     return {"tabla": "una tabla", "grupo": "una tabla agrupada", "numero": "un número",
-            "texto": "un texto", "booleano": "un booleano", "nulo": "nulo"}[clase]
+            "texto": "un texto", "booleano": "un booleano", "nulo": "nulo",
+            "lista": "una lista", "diccionario": "un diccionario"}[clase]
 
 
 def limpiar(nombre: str) -> str:
@@ -98,14 +125,32 @@ def sugerir(nombre: str, opciones) -> str:
     return " Las que hay son: " + ", ".join(opciones[:10]) + "."
 
 
-def texto_de(valor) -> str:
+def texto_de(valor, dentro: bool = False) -> str:
     if valor is None:
         return "nulo"
     if isinstance(valor, bool):
         return "verdadero" if valor else "falso"
     if isinstance(valor, float):
-        return str(round(valor, 4))
+        return str(round(valor, 4) + 0.0)   # el + 0.0 evita que salga "-0.0"
+    if isinstance(valor, str) and dentro:
+        return f'"{valor}"'
+    if isinstance(valor, Tabla):
+        return f"<tabla de {len(valor)} filas>"
+    if isinstance(valor, list):
+        partes = [texto_de(v, True) for v in valor[:ELEMENTOS_EN_PANTALLA]]
+        if len(valor) > ELEMENTOS_EN_PANTALLA:
+            partes.append(f"... ({len(valor)} en total)")
+        return "[" + ", ".join(partes) + "]"
+    if isinstance(valor, dict):
+        return "{" + ", ".join(f"{texto_de(k, True)}: {texto_de(v, True)}" for k, v in valor.items()) + "}"
     return str(valor)
+
+
+def como_matriz(valor) -> str:
+    """Una matriz se muestra fila por fila, con las columnas alineadas."""
+    celdas = [[texto_de(v) for v in fila] for fila in valor]
+    ancho = max(len(c) for fila in celdas for c in fila)
+    return "\n".join("  [ " + "  ".join(c.rjust(ancho) for c in fila) + " ]" for fila in celdas)
 
 
 class Interprete(EvaVisitor):
@@ -117,6 +162,7 @@ class Interprete(EvaVisitor):
         self.graficas = []       # archivos que dibujo HOLOGRAM
         self._entrada = None     # lo que recibe la etapa que se esta ejecutando
         self._tabla = None       # tabla cuyas columnas se pueden nombrar ahora
+        self.azar = matematica.Aleatorio()
 
     def ejecutar(self, arbol) -> None:
         self.visit(arbol)
@@ -134,8 +180,30 @@ class Interprete(EvaVisitor):
         valor = self.visit(ctx.flujo())
         if isinstance(valor, Columna):
             raise ErrorSemantico(ctx.flujo(), "una columna suelta no se puede guardar en una variable. "
-                                              "Usa TARGET para sacar una tabla con esa columna.")
-        self.simbolos.definir(nombre, clase_de(valor), valor, ctx.start.line)
+                                              "Usa TARGET para sacar una tabla con esa columna "
+                                              "o columna(tabla, \"nombre\") para tener una lista.")
+        if not ctx.indice():
+            self.simbolos.definir(nombre, clase_de(valor), valor, ctx.start.line)
+            return
+        # lista[1] = 5 o datos["clave"] = 5: se cambia un elemento de lo que ya existe
+        simbolo = self.simbolos.buscar(nombre)
+        if simbolo is None:
+            raise ErrorSemantico(ctx.nombre(), f"la variable '{nombre}' no se ha declarado."
+                                 + sugerir(nombre, self.simbolos.nombres()))
+        contenedor = simbolo.valor
+        indices = ctx.indice()
+        for indice in indices[:-1]:
+            contenedor = self._elemento(indice, contenedor, self.visit(indice.expresion()))
+        ultimo = indices[-1]
+        clave = self.visit(ultimo.expresion())
+        if isinstance(contenedor, list):
+            contenedor[self._posicion(ultimo, contenedor, clave)] = valor
+        elif isinstance(contenedor, dict):
+            self._revisar_clave(ultimo, clave)
+            contenedor[clave] = valor
+        else:
+            raise ErrorSemantico(ultimo, f"solo se puede cambiar un elemento de una lista o de un "
+                                         f"diccionario, y aquí hay {describir(contenedor)}.")
 
     def visitMostrar(self, ctx):
         valor = self.visit(ctx.flujo())
@@ -145,6 +213,10 @@ class Interprete(EvaVisitor):
         # si el flujo es solo un nombre lo usamos de titulo
         texto = ctx.flujo().getText()
         titulo = " " + texto if re.fullmatch(r"[^\W\d]\w*", texto) else ""
+        if matrices.es_matriz(valor) and len(valor) > 1:
+            print(f"MONITOR{titulo} (matriz de {len(valor)}x{len(valor[0])})")
+            print(como_matriz(valor) + "\n")
+            return
         if not isinstance(valor, Tabla):
             print(f"MONITOR{titulo}: {texto_de(valor)}\n")
             return
@@ -233,15 +305,58 @@ class Interprete(EvaVisitor):
             ancho=valores.get("ancho", 960), alto=valores.get("alto", 600),
             leyenda=valores.get("leyenda", True))
 
-    def visitCondicional(self, ctx):
-        condicion = self.visit(ctx.expresion())
+    def _condicion(self, ctx, expresion) -> bool:
+        condicion = self.visit(expresion)
         if not isinstance(condicion, bool):
-            raise ErrorSemantico(ctx.expresion(), "la condición de PATTERN_BLUE tiene que dar verdadero "
-                                                  f"o falso, y dio {describir(condicion)}.")
-        if condicion:
+            raise ErrorSemantico(expresion, f"la condición de {ctx.start.text} tiene que dar verdadero "
+                                            f"o falso, y dio {describir(condicion)}.")
+        return condicion
+
+    def visitCondicional(self, ctx):
+        if self._condicion(ctx, ctx.expresion()):
             self.visit(ctx.bloque(0))
+        elif ctx.condicional():     # sino si ...
+            self.visit(ctx.condicional())
         elif ctx.PATTERN_ORANGE():
             self.visit(ctx.bloque(1))
+
+    def visitMientras(self, ctx):
+        vueltas = 0
+        while self._condicion(ctx, ctx.expresion()):
+            vueltas += 1
+            if vueltas > MAX_VUELTAS:
+                raise ErrorSemantico(ctx, f"el ciclo ya dio más de {MAX_VUELTAS} vueltas; "
+                                          "revisa que la condición alguna vez se vuelva falsa.")
+            self.visit(ctx.bloque())
+
+    def visitPara(self, ctx):
+        nombre = limpiar(ctx.nombre().getText())
+        if ctx.EN():
+            coleccion = self.visit(ctx.expresion(0))
+            if isinstance(coleccion, Tabla):
+                elementos = coleccion.registros()   # cada fila llega como un diccionario
+            elif isinstance(coleccion, Columna):
+                elementos = coleccion.valores
+            elif isinstance(coleccion, (list, dict, str)):
+                elementos = list(coleccion)         # de un diccionario se recorren las claves
+            else:
+                raise ErrorSemantico(ctx.expresion(0), "para ... en necesita una lista, un diccionario, "
+                                                       f"un texto o una tabla, y llegó {describir(coleccion)}.")
+        else:
+            desde, hasta = self.visit(ctx.expresion(0)), self.visit(ctx.expresion(1))
+            for valor, expresion in ((desde, ctx.expresion(0)), (hasta, ctx.expresion(1))):
+                if not matematica.es_entero(valor):
+                    raise ErrorSemantico(expresion, f"desde y hasta van con números enteros "
+                                                    f"y aquí llegó {describir(valor)}.")
+            if hasta - desde > MAX_VUELTAS:
+                raise ErrorSemantico(ctx, f"el ciclo daría más de {MAX_VUELTAS} vueltas.")
+            elementos = range(desde, hasta + 1)
+        for elemento in elementos:
+            self.simbolos.definir(nombre, clase_de(elemento), elemento, ctx.start.line)
+            self.visit(ctx.bloque())
+
+    def visitLlamada(self, ctx):
+        self._llamada(ctx)
 
     def visitBloque(self, ctx):
         for sentencia in ctx.sentencia():
@@ -331,6 +446,9 @@ class Interprete(EvaVisitor):
             valor = self._evaluar_en(tabla, nueva.expresion())
             if isinstance(valor, Tabla):
                 raise ErrorSemantico(nueva.expresion(), "una tabla no cabe dentro de una columna.")
+            if isinstance(valor, list):
+                # una lista con un valor por fila se vuelve la columna
+                valor = Columna(valor)
             if isinstance(valor, Columna) and len(valor) != len(tabla):
                 raise ErrorSemantico(nueva.expresion(), f"la columna nueva tiene {len(valor)} filas "
                                                         f"y la tabla tiene {len(tabla)}.")
@@ -493,6 +611,8 @@ class Interprete(EvaVisitor):
         simbolo = self.simbolos.buscar(nombre)
         if simbolo is not None:
             return simbolo.valor
+        if nombre in CONSTANTES:
+            return CONSTANTES[nombre]
         if self._tabla is not None:
             raise ErrorSemantico(ctx, f"'{nombre}' no es una columna de la tabla ni una variable."
                                  + sugerir(nombre, self._tabla.columnas))
@@ -505,12 +625,76 @@ class Interprete(EvaVisitor):
         if simbolo is None:
             raise ErrorSemantico(ctx, f"la variable '{nombre}' no se ha declarado."
                                  + sugerir(nombre, self.simbolos.nombres()))
+        if isinstance(simbolo.valor, dict):
+            # modelo.r2 es lo mismo que modelo["r2"]
+            return self._elemento(ctx.nombre(1), simbolo.valor, limpiar(ctx.nombre(1).getText()))
         if simbolo.clase != "tabla":
             raise ErrorSemantico(ctx, f"'{nombre}' es {describir(simbolo.valor)}, no tiene columnas.")
         return simbolo.valor[self._columna(simbolo.valor, ctx.nombre(1))]
 
+    def visitExprIndice(self, ctx):
+        contenedor = self.visit(ctx.expresion(0))
+        return self._elemento(ctx.expresion(1), contenedor, self.visit(ctx.expresion(1)))
+
+    def visitExprLista(self, ctx):
+        return [self.visit(e) for e in ctx.expresion()]
+
+    def visitExprDiccionario(self, ctx):
+        diccionario = {}
+        for par in ctx.par():
+            clave = quitar_comillas(par.CADENA().getText()) if par.CADENA() else limpiar(par.nombre().getText())
+            diccionario[clave] = self.visit(par.expresion())
+        return diccionario
+
+    def _posicion(self, ctx, lista, indice) -> int:
+        """Las posiciones empiezan en 0; con negativos se cuenta desde el final (-1 es el ultimo)."""
+        if not matematica.es_entero(indice):
+            raise ErrorSemantico(ctx, f"la posición va con un número entero y llegó {describir(indice)}.")
+        if not -len(lista) <= indice < len(lista):
+            raise ErrorSemantico(ctx, f"la posición {indice} no existe: hay {len(lista)} "
+                                      f"elementos (de 0 a {len(lista) - 1}).")
+        return indice
+
+    def _revisar_clave(self, ctx, clave) -> None:
+        if not isinstance(clave, (str, int)) or isinstance(clave, bool):
+            raise ErrorSemantico(ctx, f"las claves de un diccionario son textos o enteros y llegó {describir(clave)}.")
+
+    def _elemento(self, ctx, contenedor, clave):
+        if isinstance(contenedor, (list, str)):
+            return contenedor[self._posicion(ctx, contenedor, clave)]
+        if isinstance(contenedor, dict):
+            self._revisar_clave(ctx, clave)
+            if clave not in contenedor:
+                raise ErrorSemantico(ctx, f"la clave '{clave}' no está en el diccionario."
+                                     + sugerir(str(clave), contenedor))
+            return contenedor[clave]
+        if isinstance(contenedor, Tabla):
+            if isinstance(clave, str):
+                if clave not in contenedor.columnas:
+                    raise ErrorSemantico(ctx, f"la columna '{clave}' no existe en la tabla."
+                                         + sugerir(clave, contenedor.columnas))
+                return list(contenedor[clave].valores)
+            # tabla[0] es la primera fila, como un diccionario
+            registros = contenedor.registros()
+            return registros[self._posicion(ctx, registros, clave)]
+        raise ErrorSemantico(ctx, f"con [ ] se sacan elementos de una lista, un diccionario, un texto "
+                                  f"o una tabla, y aquí hay {describir(contenedor)}.")
+
+    def _con_listas(self, ctx, a, b, operador):
+        """Entre listas (o lista y numero) las cuentas se hacen elemento por elemento."""
+        funciones = {"+": lambda x, y: x + y, "-": lambda x, y: x - y, "*": lambda x, y: x * y,
+                     "/": lambda x, y: x / y, "%": lambda x, y: x % y, "^": lambda x, y: x ** y}
+        try:
+            return matrices.operar(a, b, funciones[operador])
+        except ZeroDivisionError:
+            raise ErrorSemantico(ctx, "no se puede dividir por cero.")
+        except (ValueError, TypeError) as error:
+            raise ErrorSemantico(ctx, f"'{operador}' entre listas: {error}.")
+
     def visitExprPotencia(self, ctx):
         a, b, _ = self._operandos(ctx)
+        if isinstance(a, list) or isinstance(b, list):
+            return self._con_listas(ctx, a, b, "^")
         self._exigir(ctx, "^", "numero", a, b)
         if isinstance(a, Columna) or isinstance(b, Columna):
             return a ** b
@@ -527,11 +711,15 @@ class Interprete(EvaVisitor):
 
     def visitExprNegativo(self, ctx):
         valor = self.visit(ctx.expresion())
+        if isinstance(valor, list):
+            return self._con_listas(ctx, valor, -1, "*")
         self._exigir(ctx, "-", "numero", valor)
         return -valor
 
     def visitExprMultiplicativa(self, ctx):
         a, b, operador = self._operandos(ctx)
+        if isinstance(a, list) or isinstance(b, list):
+            return self._con_listas(ctx, a, b, operador)
         self._exigir(ctx, operador, "numero", a, b)
         if operador == "*":
             return a * b
@@ -544,6 +732,8 @@ class Interprete(EvaVisitor):
         # el + tambien sirve para pegar textos
         if operador == "+" and "texto" in (clase_de(a), clase_de(b)) and encaja(a, "texto") and encaja(b, "texto"):
             return a + b
+        if isinstance(a, list) or isinstance(b, list):
+            return self._con_listas(ctx, a, b, operador)
         self._exigir(ctx, operador, "numero", a, b)
         return a + b if operador == "+" else a - b
 
@@ -583,25 +773,148 @@ class Interprete(EvaVisitor):
         return a | b
 
     def visitExprLlamada(self, ctx):
+        if ctx.ID().getText() in SIN_RESULTADO:
+            raise ErrorSemantico(ctx, f"{ctx.ID().getText()}() cambia algo pero no devuelve nada; "
+                                      "va sola en su línea.")
+        return self._llamada(ctx)
+
+    def _llamada(self, ctx):
         nombre = ctx.ID().getText()
         args = [self.visit(e) for e in ctx.expresion()]
 
         if nombre in AGREGACIONES:
+            if len(args) == 1 and isinstance(args[0], list):
+                args = [Columna(args[0])]    # una lista se resume igual que una columna
             if len(args) != 1 or not isinstance(args[0], Columna):
-                raise ErrorSemantico(ctx, f"{nombre}() necesita una columna, "
+                raise ErrorSemantico(ctx, f"{nombre}() necesita una columna o una lista, "
                                           f"por ejemplo {nombre}(tabla.columna).")
             if nombre in SOLO_NUMEROS and not encaja(args[0], "numero"):
                 raise ErrorSemantico(ctx, f"tipos incompatibles: {nombre}() necesita números "
                                           f"y recibió {describir(args[0])}.")
             return getattr(args[0], nombre)()
 
-        if nombre not in FUNCIONES:
+        if nombre not in TODAS:
             raise ErrorSemantico(ctx, f"la función '{nombre}' no existe."
-                                 + sugerir(nombre, [*FUNCIONES, *AGREGACIONES]))
-        minimo, maximo = FUNCIONES[nombre]
+                                 + sugerir(nombre, [*TODAS, *AGREGACIONES]))
+        minimo, maximo = TODAS[nombre]
         if not minimo <= len(args) <= maximo:
-            raise ErrorSemantico(ctx, f"{nombre}() recibió {len(args)} argumentos y no es lo que espera.")
+            cuantos = str(minimo) if minimo == maximo else f"entre {minimo} y {maximo}"
+            raise ErrorSemantico(ctx, f"{nombre}() recibe {cuantos} argumentos y le llegaron {len(args)}.")
+        try:
+            if nombre in MATEMATICAS:
+                return self._matematica(ctx, nombre, args)
+            if nombre in LISTAS:
+                return self._lista(ctx, nombre, args)
+            if nombre in MATRICES:
+                return getattr(matrices, nombre)(*args)
+            if nombre in MODELOS:
+                return self._modelo(nombre, args)
+        except (ValueError, TypeError, OverflowError, ZeroDivisionError) as error:
+            raise ErrorSemantico(ctx, f"{nombre}(): {error}.")
         return self._llamar(ctx, nombre, args)
+
+    def _matematica(self, ctx, nombre, args):
+        funcion = MATEMATICAS[nombre]
+        valor, extra = args[0], args[1:]
+        self._exigir(ctx, nombre + "()", "numero", *extra)
+        if isinstance(valor, list):
+            return matrices.cada(valor, lambda v: funcion(v, *extra))
+        self._exigir(ctx, nombre + "()", "numero", valor)
+        if isinstance(valor, Columna):
+            def segura(v):
+                # en una columna un calculo imposible deja el dato como faltante
+                try:
+                    return funcion(v, *extra)
+                except (ValueError, OverflowError, ZeroDivisionError):
+                    return None
+            return valor._cada(segura)
+        return funcion(valor, *extra)
+
+    def _lista(self, ctx, nombre, args):
+        primero = args[0] if args else None
+        if nombre == "longitud":
+            if isinstance(primero, (list, dict, str, Tabla, Columna)):
+                return len(primero)
+            raise ValueError(f"necesita una lista, un diccionario, un texto o una tabla y llegó {describir(primero)}")
+        if nombre == "aleatorio":
+            if not args:
+                return self.azar.siguiente()
+            if len(args) == 2 and all(matematica.es_entero(a) for a in args) and args[0] <= args[1]:
+                return self.azar.entero(args[0], args[1])
+            raise ValueError("va sin nada (un número entre 0 y 1) o con dos enteros, como aleatorio(1, 6)")
+        if nombre == "semilla":
+            if not matematica.es_entero(primero):
+                raise ValueError("la semilla es un número entero")
+            self.azar = matematica.Aleatorio(primero)
+            return None
+        if nombre == "rango":
+            if not all(matematica.es_entero(a) for a in args):
+                raise ValueError("va con números enteros")
+            desde, hasta = (1, args[0]) if len(args) == 1 else (args[0], args[1])
+            paso = args[2] if len(args) == 3 else 1
+            if paso == 0:
+                raise ValueError("el paso no puede ser 0")
+            if (hasta - desde) / paso > MAX_VUELTAS:
+                raise ValueError(f"la lista tendría más de {MAX_VUELTAS} números")
+            return list(range(desde, hasta + (1 if paso > 0 else -1), paso))
+        if nombre == "texto":
+            return texto_de(primero)
+        if nombre == "numero":
+            return self._a_numero(primero)
+        if nombre == "tabla_de":
+            if (not isinstance(primero, dict) or not primero
+                    or not all(isinstance(v, list) for v in primero.values())
+                    or len({len(v) for v in primero.values()}) != 1):
+                raise ValueError("necesita un diccionario de listas del mismo largo, "
+                                 'por ejemplo tabla_de({"x": [1, 2], "y": [3, 4]})')
+            return Tabla([str(c) for c in primero], {str(c): v for c, v in primero.items()})
+        if nombre == "columna":
+            if not isinstance(primero, Tabla) or not isinstance(args[1], str):
+                raise ValueError('va así: columna(tabla, "nombre")')
+            if args[1] not in primero.columnas:
+                raise ValueError(f"la columna '{args[1]}' no existe en la tabla")
+            return list(primero[args[1]].valores)
+        if nombre in ("claves", "valores"):
+            if not isinstance(primero, dict):
+                raise ValueError(f"necesita un diccionario y llegó {describir(primero)}")
+            return list(primero.keys() if nombre == "claves" else primero.values())
+        if nombre == "contiene":
+            if isinstance(primero, str) and isinstance(args[1], str) or isinstance(primero, (list, dict)):
+                return args[1] in primero
+            raise ValueError("busca dentro de una lista, un diccionario o un texto")
+        if not isinstance(primero, list):
+            raise ValueError(f"necesita una lista y llegó {describir(primero)}")
+        if nombre == "agregar":
+            primero.append(args[1])
+            return None
+        if nombre == "sacar":
+            if not primero:
+                raise ValueError("la lista está vacía")
+            return primero.pop(self._posicion(ctx, primero, args[1] if len(args) == 2 else -1))
+        if nombre == "ordenada":
+            return sorted(primero)
+        if nombre == "invertida":
+            return primero[::-1]
+        if not isinstance(args[1], list):
+            raise ValueError("une dos listas")
+        return primero + args[1]   # unir
+
+    @staticmethod
+    def _a_numero(valor):
+        if es_numero(valor):
+            return valor
+        if isinstance(valor, str):
+            texto = valor.strip()
+            if re.fullmatch(r"[+-]?\d+", texto):
+                return int(texto)
+            if re.fullmatch(r"[+-]?(\d+\.?\d*|\.\d+)", texto):
+                return float(texto)
+        raise ValueError(f"no se pudo convertir {texto_de(valor, True)} en número")
+
+    def _modelo(self, nombre, args):
+        if nombre in ("regresion", "clasificar", "grupos", "dividir") and not isinstance(args[0], Tabla):
+            raise ValueError(f"el primer argumento tiene que ser una tabla y llegó {describir(args[0])}")
+        return getattr(aprendizaje, nombre)(*args)
 
     def _llamar(self, ctx, nombre, args):
         valor = args[0]
@@ -611,10 +924,16 @@ class Interprete(EvaVisitor):
             return len(valor)
 
         if nombre in ("redondear", "absoluto"):
+            decimales = args[1] if len(args) == 2 else 0
+            if isinstance(valor, list):
+                funcion = matematica.absoluto if nombre == "absoluto" else lambda v: round(v, decimales)
+                try:
+                    return matrices.cada(valor, funcion)
+                except TypeError:
+                    raise ErrorSemantico(ctx, f"{nombre}() con una lista necesita que todo sean números.")
             self._exigir(ctx, nombre + "()", "numero", *args)
             if nombre == "absoluto":
                 return abs(valor)
-            decimales = args[1] if len(args) == 2 else 0
             if not isinstance(decimales, int):
                 raise ErrorSemantico(ctx, "los decimales de redondear() van como un número entero.")
             return valor.redondear(decimales) if isinstance(valor, Columna) else round(valor, decimales)
