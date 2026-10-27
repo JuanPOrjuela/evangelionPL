@@ -32,10 +32,10 @@ MATRICES = {"ceros": (1, 2), "unos": (1, 2), "identidad": (1, 1), "transpuesta":
             "producto": (2, 2), "punto": (2, 2), "determinante": (1, 1), "inversa": (1, 1),
             "resolver": (2, 2), "forma": (1, 1), "norma": (1, 1)}
 MODELOS = {"regresion": (3, 3), "arbol": (3, 4), "perceptron": (3, 5), "red_neuronal": (3, 7),
-           "knn": (3, 4), "grupos": (3, 4), "predecir": (2, 2), "reglas": (1, 1),
+           "grupos": (3, 4), "predecir": (2, 2), "reglas": (1, 1),
            "dividir": (1, 3), "error_cuadratico": (2, 2), "r2": (2, 2), "exactitud": (2, 2),
            "correlacion": (2, 2)}
-CON_TABLA = ("regresion", "arbol", "perceptron", "red_neuronal", "knn", "grupos", "dividir")
+CON_TABLA = ("regresion", "arbol", "perceptron", "red_neuronal", "grupos", "dividir")
 # Reciben una funcion escrita por el usuario
 NUMERICOS = {"derivada": (2, 2), "biseccion": (3, 3), "newton": (2, 2), "mapear": (2, 2)}
 TODAS = {**FUNCIONES, **{n: (1, 2 if n in DOS_ARGUMENTOS else 1) for n in MATEMATICAS},
