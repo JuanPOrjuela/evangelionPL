@@ -554,3 +554,19 @@ def test_errores_de_profecia():
     assert "solo tiene 3 filas" in falla(base + "r = t |> PROFECIA c por [x] vecinos 3")
     assert "a la vez el objetivo" in falla(base + "r = t |> PROFECIA x por [x] vecinos 1")
     assert "necesita números" in falla(base + "r = t |> PROFECIA x por [c] vecinos 1")
+
+
+def test_profecia_cuenta_solo_las_filas_completas():
+    # 5 filas, pero 2 tienen faltantes: quedan 3 completas y cada una tiene 2 vecinas posibles
+    base = 't = tabla_de({"x": [1, 2, 3, nulo, 5], "c": ["a", "b", "a", "b", nulo]})\n'
+    assert "3 filas completas" in falla(base + "r = t |> PROFECIA c por [x] vecinos 3")
+    t = v(base + "r = t |> PROFECIA c por [x] vecinos 2")
+    assert t["c_prediccion"].valores[3] is None     # sin x no se puede predecir
+    assert t["c_prediccion"].valores[4] is not None  # sin c si se predice con las demas
+
+
+def test_profecia_en_empate_gana_el_vecino_mas_cercano():
+    # la fila x=10 tiene de vecinas a x=11 ("b", mas cerca) y x=8 ("a"): empate 1 a 1, gana "b"
+    t = v('t = tabla_de({"x": [0, 8, 10, 11], "c": ["a", "a", "z", "b"]})\n'
+          "r = t |> PROFECIA c por [x] vecinos 2")
+    assert t["c_prediccion"].valores[2] == "b"

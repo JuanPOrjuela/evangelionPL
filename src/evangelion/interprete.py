@@ -709,9 +709,13 @@ class Interprete(EvaVisitor):
         k = int(ctx.ENTERO().getText())
         if k < 1:
             raise ErrorSemantico(ctx.ENTERO().symbol, "VECINOS necesita un número de al menos 1.")
-        if k >= len(tabla):
+        # solo sirven de vecinas las filas sin faltantes, y una fila no es vecina de si misma
+        completas = sum(1 for fila in tabla.registros()
+                        if all(fila[c] is not None for c in [objetivo, *predictoras]))
+        if k > completas - 1:
             raise ErrorSemantico(ctx.ENTERO().symbol, f"VECINOS pide {k} pero la tabla solo tiene "
-                                                       f"{len(tabla)} filas.")
+                                                       f"{completas} filas completas, así que cada fila "
+                                                       f"tiene a lo más {max(completas - 1, 0)} vecinas.")
 
         prediccion = tabla.predecir_knn(objetivo, predictoras, k)
         return tabla.con_columna(f"{objetivo}_prediccion", prediccion)
