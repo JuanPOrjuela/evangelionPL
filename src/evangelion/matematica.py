@@ -31,6 +31,13 @@ def absoluto(x):
 
 def raiz(x, indice=2):
     """Raiz con el metodo de Newton: se mejora una aproximacion hasta que no cambia."""
+    if indice == 0:
+        raise ValueError("el índice de la raíz no puede ser 0")
+    if indice < 0:
+        # raiz(x, -n) = 1 / raiz(x, n)
+        if x == 0:
+            raise ValueError("cero no tiene raíz con índice negativo (sería dividir por cero)")
+        return 1 / raiz(x, -indice)
     if x < 0:
         if es_entero(indice) and indice % 2 == 1:
             return -raiz(-x, indice)

@@ -353,7 +353,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 298 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 311 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco

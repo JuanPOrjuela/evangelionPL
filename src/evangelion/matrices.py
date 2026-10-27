@@ -51,19 +51,28 @@ def cada(a, funcion):
     return funcion(a)
 
 
-def ceros(filas: int, columnas: int = 0) -> list:
-    if columnas == 0:
+def _revisar_tamano(*tamanos) -> None:
+    for n in tamanos:
+        if not isinstance(n, int) or isinstance(n, bool) or n < 1:
+            raise ValueError(f"los tamaños van con enteros desde 1 y llegó {n}")
+
+
+def ceros(filas: int, columnas: int = None) -> list:
+    _revisar_tamano(filas, *([] if columnas is None else [columnas]))
+    if columnas is None:
         return [0] * filas
     return [[0] * columnas for _ in range(filas)]
 
 
-def unos(filas: int, columnas: int = 0) -> list:
-    if columnas == 0:
+def unos(filas: int, columnas: int = None) -> list:
+    _revisar_tamano(filas, *([] if columnas is None else [columnas]))
+    if columnas is None:
         return [1] * filas
     return [[1] * columnas for _ in range(filas)]
 
 
 def identidad(n: int) -> list:
+    _revisar_tamano(n)
     return [[1 if i == j else 0 for j in range(n)] for i in range(n)]
 
 

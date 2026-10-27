@@ -483,7 +483,10 @@ def red_neuronal(tabla: Tabla, variables, objetivo: str, ocultas: int = 5, tasa:
     perdidas = []
     for _ in range(epocas):
         perdida = 0.0
-        for fila, etiqueta in zip(x, etiquetas):
+        # en cada epoca las filas van en otro orden, para que el orden del archivo
+        # no empuje siempre los pesos hacia el mismo lado
+        for i in azar.barajar(range(len(x))):
+            fila, etiqueta = x[i], etiquetas[i]
             a1, p = _adelante(modelo, fila)
             real = [1 if clase == etiqueta else 0 for clase in clases]
             perdida += -ln(max(p[clases.index(etiqueta)], 1e-12))

@@ -29,6 +29,16 @@ def es_numero(valor) -> bool:
     return isinstance(valor, (int, float)) and not isinstance(valor, bool)
 
 
+def congelar(valor):
+    """Una version que se puede meter en un set: las listas y los diccionarios
+    (que Python no deja guardar en un set) pasan a tuplas."""
+    if isinstance(valor, list):
+        return ("lista",) + tuple(congelar(v) for v in valor)
+    if isinstance(valor, dict):
+        return ("diccionario",) + tuple(sorted(((str(k), congelar(v)) for k, v in valor.items()), key=str))
+    return valor
+
+
 # --- Columna -------------------------------------------------------------------
 
 class Columna:
@@ -129,7 +139,7 @@ class Columna:
         return len(self.valores) - self.contar()
 
     def distintos(self) -> int:
-        return len(set(self.presentes()))
+        return len({congelar(v) for v in self.presentes()})
 
     def suma(self):
         return sum(self.presentes())
@@ -253,7 +263,7 @@ class Tabla:
         columnas = columnas or self.columnas
         vistas, indices = set(), []
         for i in range(len(self)):
-            clave = tuple(self._datos[c][i] for c in columnas)
+            clave = tuple(congelar(self._datos[c][i]) for c in columnas)
             if clave not in vistas:
                 vistas.add(clave)
                 indices.append(i)

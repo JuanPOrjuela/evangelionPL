@@ -533,7 +533,15 @@ class Interprete(EvaVisitor):
 
     def visitEtapaSeleccionar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
-        return tabla.seleccionar(self._columnas(tabla, ctx.listaColumnas()))
+        columnas = self._columnas(tabla, ctx.listaColumnas())
+        self._sin_repetidas(ctx.listaColumnas(), columnas)
+        return tabla.seleccionar(columnas)
+
+    @staticmethod
+    def _sin_repetidas(ctx, nombres) -> None:
+        repetidas = [n for i, n in enumerate(nombres) if n in nombres[:i]]
+        if repetidas:
+            raise ErrorSemantico(ctx, f"la columna '{repetidas[0]}' está repetida en la lista.")
 
     def visitEtapaFiltrar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
@@ -566,10 +574,15 @@ class Interprete(EvaVisitor):
         cambios = {}
         for renombre in ctx.renombre():
             viejo = self._columna(tabla, renombre.nombre(0))
+            if viejo in cambios:
+                raise ErrorSemantico(renombre.nombre(0), f"la columna '{viejo}' se renombra dos veces.")
+            cambios[viejo] = limpiar(renombre.nombre(1).getText())
+        # se mira como quedan todas juntas, asi [a -> b, b -> a] intercambia los nombres
+        finales = [cambios.get(c, c) for c in tabla.columnas]
+        for renombre in ctx.renombre():
             nuevo = limpiar(renombre.nombre(1).getText())
-            if nuevo in tabla.columnas and nuevo != viejo:
-                raise ErrorSemantico(renombre.nombre(1), f"ya hay una columna llamada '{nuevo}'.")
-            cambios[viejo] = nuevo
+            if finales.count(nuevo) > 1:
+                raise ErrorSemantico(renombre.nombre(1), f"quedarían dos columnas llamadas '{nuevo}'.")
         return tabla.renombrar(cambios)
 
     def visitEtapaOrdenar(self, ctx):
@@ -593,7 +606,11 @@ class Interprete(EvaVisitor):
 
     def visitEtapaQuitarColumnas(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
-        return tabla.sin_columnas(self._columnas(tabla, ctx.listaColumnas()))
+        columnas = self._columnas(tabla, ctx.listaColumnas())
+        if set(columnas) >= set(tabla.columnas):
+            raise ErrorSemantico(ctx.listaColumnas(), "no se pueden quitar todas las columnas: "
+                                                      "la tabla quedaría vacía.")
+        return tabla.sin_columnas(columnas)
 
     def visitEtapaRellenar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
@@ -857,7 +874,7 @@ class Interprete(EvaVisitor):
             if isinstance(otro, Columna):
                 return otro.es_nulo() if operador == "==" else ~otro.es_nulo()
             return (otro is None) == (operador == "==")
-        if not encaja(a, clase_de(b)) and not encaja(b, clase_de(a)) or clase_de(a) == "tabla":
+        if not encaja(a, clase_de(b)) and not encaja(b, clase_de(a)) or "tabla" in (clase_de(a), clase_de(b)):
             raise ErrorSemantico(ctx, f"tipos incompatibles: no se puede comparar {describir(a)} "
                                       f"con {describir(b)} usando '{operador}'.")
         return a == b if operador == "==" else a != b
@@ -900,7 +917,11 @@ class Interprete(EvaVisitor):
             if nombre in SOLO_NUMEROS and not encaja(args[0], "numero"):
                 raise ErrorSemantico(ctx, f"tipos incompatibles: {nombre}() necesita números "
                                           f"y recibió {describir(args[0])}.")
-            return getattr(args[0], nombre)()
+            try:
+                return getattr(args[0], nombre)()
+            except TypeError:
+                raise ErrorSemantico(ctx, f"{nombre}() no puede comparar números con textos; "
+                                          "los valores tienen que ser todos del mismo tipo.")
 
         if nombre not in TODAS:
             raise ErrorSemantico(ctx, f"la función '{nombre}' no existe."
@@ -1003,7 +1024,11 @@ class Interprete(EvaVisitor):
                 raise ValueError("la lista está vacía")
             return primero.pop(self._posicion(ctx, primero, args[1] if len(args) == 2 else -1))
         if nombre == "ordenada":
-            return sorted(primero)
+            try:
+                return sorted(primero)
+            except TypeError:
+                raise ValueError("no se puede ordenar una lista que mezcla tipos (números con textos, "
+                                 "listas o nulos)")
         if nombre == "invertida":
             return primero[::-1]
         if not isinstance(args[1], list):
@@ -1036,6 +1061,8 @@ class Interprete(EvaVisitor):
 
         if nombre in ("redondear", "absoluto"):
             decimales = args[1] if len(args) == 2 else 0
+            if not matematica.es_entero(decimales):
+                raise ErrorSemantico(ctx, "los decimales de redondear() van como un número entero.")
             if isinstance(valor, list):
                 funcion = matematica.absoluto if nombre == "absoluto" else lambda v: round(v, decimales)
                 try:
@@ -1045,8 +1072,6 @@ class Interprete(EvaVisitor):
             self._exigir(ctx, nombre + "()", "numero", *args)
             if nombre == "absoluto":
                 return abs(valor)
-            if not isinstance(decimales, int):
-                raise ErrorSemantico(ctx, "los decimales de redondear() van como un número entero.")
             return valor.redondear(decimales) if isinstance(valor, Columna) else round(valor, decimales)
 
         if not encaja(valor, "texto"):

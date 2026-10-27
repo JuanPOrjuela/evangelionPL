@@ -480,3 +480,63 @@ q = predecir(red, limpia)""")
     assert valor(i, "a")["tipo"] == "arbol" and all(r.startswith("si ") for r in valor(i, "reg"))
     assert valor(i, "p")["exactitud"] == 1
     assert "prediccion" in valor(i, "q").columnas
+
+
+# --- Casos borde: errores en espanol en vez de fallas de Python ---------------------------------
+
+def test_decimales_de_redondear_tienen_que_ser_enteros():
+    assert "decimales" in falla("x = redondear(2.567, verdadero)")
+    assert "decimales" in falla("x = redondear([1.25], 1.5)")
+    assert v("r = redondear([1.234, 5.678], 1)") == [1.2, 5.7]
+
+
+def test_tipos_mezclados_al_comparar_u_ordenar():
+    assert "mismo tipo" in falla('x = minimo([1, "a"])')
+    assert "mismo tipo" in falla('x = maximo([1, "a"])')
+    assert "mezcla tipos" in falla('x = ordenada([1, "a"])')
+
+
+def test_listas_dentro_de_una_columna():
+    t = v('r = tabla_de({"a": [[1], [1], [2]]}) |> quitar duplicados')
+    assert t["a"].valores == [[1], [2]]
+    resumen = v('r = tabla_de({"a": [[1], [1], {"k": 1}]}) |> diagnosticar')
+    assert resumen["distintos"].valores == [2]
+
+
+def test_renombrar_revisa_el_resultado_completo():
+    base = 't = tabla_de({"a": [1], "b": [2]})\n'
+    assert v(base + "r = t |> renombrar [a -> b, b -> a]").columnas == ["b", "a"]
+    assert "dos columnas llamadas 'c'" in falla(base + "r = t |> renombrar [a -> c, b -> c]")
+    assert "dos veces" in falla(base + "r = t |> renombrar [a -> c, a -> d]")
+    assert "dos columnas llamadas 'b'" in falla(base + "r = t |> renombrar [a -> b]")
+
+
+def test_seleccionar_y_quitar_columnas():
+    base = 't = tabla_de({"a": [1], "b": [2]})\n'
+    assert "repetida" in falla(base + "r = t |> seleccionar [a, a]")
+    assert "todas las columnas" in falla(base + "r = t |> quitar columnas [a, b]")
+    assert v(base + "r = t |> quitar columnas [a]").columnas == ["b"]
+
+
+def test_una_tabla_no_se_compara_ni_con_una_columna_vacia():
+    assert "tipos incompatibles" in falla('t = tabla_de({"a": [nulo]})\nx = t |> filtrar donde a == t')
+
+
+@pytest.mark.parametrize("codigo", ["x = ceros(-1)", "x = ceros(2.5)", "x = unos(2, 0)", "x = identidad(0)",
+                                    "x = identidad(verdadero)"])
+def test_tamanos_de_matrices(codigo):
+    assert "enteros desde 1" in falla(codigo)
+
+
+def test_indices_raros_de_raiz():
+    assert "no puede ser 0" in falla("x = raiz(4, 0)")
+    assert "índice negativo" in falla("x = raiz(0, -2)")
+    assert v("r = raiz(4, -2)") == pytest.approx(0.5)
+    assert "negativo" in falla("x = raiz(-8, 1.5)")
+
+
+def test_red_neuronal_se_repite_con_la_misma_semilla():
+    t = Tabla(["a", "c"], {"a": [0, 1, 2, 3, 4, 5], "c": ["x", "x", "x", "y", "y", "y"]})
+    uno = aprendizaje.red_neuronal(t, "a", "c", 3, 0.5, 30)
+    otro = aprendizaje.red_neuronal(t, "a", "c", 3, 0.5, 30)
+    assert uno["perdidas"] == otro["perdidas"]
