@@ -17,6 +17,8 @@ sentencia
     | condicional
     | mientras
     | para
+    | funcion
+    | retornar
     | llamada
     ;
 
@@ -30,6 +32,9 @@ graficar    : HOLOGRAM ID DE flujo ( LLAVE_IZQ opcion* LLAVE_DER )? ;
 condicional : PATTERN_BLUE expresion bloque ( PATTERN_ORANGE ( condicional | bloque ) )? ;
 mientras    : MIENTRAS expresion bloque ;
 para        : PARA nombre ( EN expresion | DESDE expresion HASTA expresion ) bloque ;
+// funcion promedio(a, b) { retornar (a + b) / 2 }
+funcion     : FUNCION ID PAR_IZQ ( nombre ( COMA nombre )* )? PAR_DER bloque ;
+retornar    : RETORNAR flujo ;
 // una funcion que se llama sola, por ejemplo agregar(lista, 4)
 llamada     : ID PAR_IZQ ( expresion ( COMA expresion )* )? PAR_DER ;
 bloque      : LLAVE_IZQ sentencia* LLAVE_DER ;
@@ -116,6 +121,10 @@ SQUAD      : 'SQUAD' | 'agrupar' ;
 MAGI       : 'MAGI' | 'resumir' ;
 BATTERY    : 'BATTERY' | 'limitar' ;
 DIAGNOSTIC : 'DIAGNOSTIC' | 'diagnosticar' ;
+
+// --- Funciones ---
+FUNCION    : 'funcion' ;
+RETORNAR   : 'retornar' ;
 
 // --- Ciclos ---
 MIENTRAS   : 'mientras' ;

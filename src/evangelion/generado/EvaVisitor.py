@@ -64,6 +64,16 @@ class EvaVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by EvaParser#funcion.
+    def visitFuncion(self, ctx:EvaParser.FuncionContext):
+        return self.visitChildren(ctx)
+
+
+    # Visit a parse tree produced by EvaParser#retornar.
+    def visitRetornar(self, ctx:EvaParser.RetornarContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by EvaParser#llamada.
     def visitLlamada(self, ctx:EvaParser.LlamadaContext):
         return self.visitChildren(ctx)

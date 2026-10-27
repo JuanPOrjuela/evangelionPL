@@ -1,8 +1,8 @@
 """Formas de mostrar el arbol de analisis: texto, parentesis y dibujo SVG."""
 
-from html import escape
-
 from antlr4 import TerminalNode
+
+from .lienzo import escape
 
 
 def nombre_regla(nodo) -> str:

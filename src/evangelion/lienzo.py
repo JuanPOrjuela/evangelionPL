@@ -6,9 +6,15 @@ compresor DEFLATE y sus propios CRC-32 y Adler-32; LienzoSVG escribe las mismas
 figuras como texto SVG. Las graficas no saben en cual de los dos estan dibujando.
 """
 
-from html import escape
 
 from .fuente import ALTO, AVANCE, ancho_texto, pixeles_de
+
+
+def escape(texto: str) -> str:
+    """Cambia los caracteres que el SVG (XML) usaria como marcas."""
+    for caracter, entidad in (("&", "&amp;"), ("<", "&lt;"), (">", "&gt;"), ('"', "&quot;"), ("'", "&#x27;")):
+        texto = texto.replace(caracter, entidad)
+    return texto
 
 
 def color_rgb(color: str) -> tuple:

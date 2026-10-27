@@ -5,7 +5,6 @@ programa "Matrices y modelos"
 a = [[2, 1], [1, 3]]
 mostrar a
 mostrar transpuesta(a)
-mostrar producto(a, identidad(2))
 mostrar determinante(a)
 mostrar inversa(a)
 
@@ -15,28 +14,62 @@ mostrar resolver(a, [5, 10])
 # --- Datos reales: CO2 de America Latina (Our World in Data) ---
 co2 = cargar "datos/co2_latam.csv"
     |> quitar faltantes [gdp, population, co2, co2_per_capita, energy_per_capita]
-    |> crear pib_por_persona = gdp / population,
-             contamina_mucho = co2_per_capita > 2
+    |> crear pib_por_persona = gdp / population
 
-# 1) Prediccion: regresion lineal del CO2 por persona segun la energia que se usa
+# una funcion propia para ponerle nombre al nivel de emisiones
+funcion nivel(toneladas) {
+    si toneladas > 3 {
+        retornar "alto"
+    } sino si toneladas > 1.5 {
+        retornar "medio"
+    }
+    retornar "bajo"
+}
+
+co2 = co2 |> crear contamina = mapear(nivel, co2_per_capita),
+                   contamina_mucho = co2_per_capita > 2
+
+mostrar correlacion(co2.energy_per_capita, co2.co2_per_capita)
+
 partes = dividir(co2, 0.8)
 entrenamiento = partes[0]
 prueba = partes[1]
 
-modelo = regresion(entrenamiento, ["energy_per_capita", "pib_por_persona"], "co2_per_capita")
-mostrar modelo.coeficientes
-mostrar modelo.r2
-
-resultado = predecir(modelo, prueba)
+# 1) Prediccion: regresion lineal del CO2 por persona segun la energia y el PIB
+lineal = regresion(entrenamiento, ["energy_per_capita", "pib_por_persona"], "co2_per_capita")
+mostrar lineal.coeficientes
+resultado = predecir(lineal, prueba)
 mostrar r2(resultado.co2_per_capita, resultado.prediccion)
-mostrar predecir(modelo, [20000, 15000])
 
-# 2) Clasificacion: k vecinos para saber si un pais-año contamina mucho
-vecinos = clasificar(entrenamiento, ["energy_per_capita", "pib_por_persona"], "contamina_mucho", 5)
-revision = predecir(vecinos, prueba)
+# 2) Clasificacion con un arbol de decision (bajo, medio o alto)
+decision = arbol(entrenamiento, ["energy_per_capita", "pib_por_persona"], "contamina", 3)
+mostrar reglas(decision)
+revision = predecir(decision, prueba)
+mostrar exactitud(revision.contamina, revision.prediccion)
+
+# 3) Clasificacion con un perceptron (descenso de gradiente con derivadas parciales)
+neurona = perceptron(entrenamiento, ["energy_per_capita", "pib_por_persona"], "contamina_mucho", 0.5, 300)
+mostrar neurona.pesos
+revision = predecir(neurona, prueba)
 mostrar exactitud(revision.contamina_mucho, revision.prediccion)
 
-# 3) Agrupamiento: k-medias con los paises en 2022 (el ultimo año con todos los datos)
+# la perdida de cada epoca, para ver que el gradiente si la hizo bajar
+curva = tabla_de({"epoca": rango(300), "perdida": neurona.perdidas})
+graficar lineas de curva {
+    eje_x: epoca,
+    eje_y: perdida,
+    titulo: "Entrenamiento del perceptron",
+    etiqueta_x: "Epoca",
+    etiqueta_y: "Entropia cruzada",
+    archivo: "salidas/perdida_perceptron.png"
+}
+
+# 4) Red neuronal de una capa oculta (retropropagacion) para las tres clases
+red = red_neuronal(entrenamiento, ["energy_per_capita", "pib_por_persona"], "contamina", 6, 0.3, 150)
+revision = predecir(red, prueba)
+mostrar exactitud(revision.contamina, revision.prediccion)
+
+# 5) Agrupamiento: k-medias con los paises en 2022 (el ultimo año con todos los datos)
 paises = co2 |> filtrar donde year == 2022
 agrupados = grupos(paises, ["co2_per_capita", "energy_per_capita"], 3)
 mostrar agrupados |> seleccionar [country, co2_per_capita, energy_per_capita, grupo]

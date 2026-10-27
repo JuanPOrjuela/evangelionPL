@@ -1,8 +1,8 @@
 """El Visitor recorre el arbol y ejecuta el programa con nuestras librerias:
 tablas (datos), matematica, matrices, aprendizaje (modelos) y graficas."""
 
-import operator
 import re
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -31,10 +31,16 @@ LISTAS = {"longitud": (1, 1), "agregar": (2, 2), "sacar": (1, 2), "contiene": (2
 MATRICES = {"ceros": (1, 2), "unos": (1, 2), "identidad": (1, 1), "transpuesta": (1, 1),
             "producto": (2, 2), "punto": (2, 2), "determinante": (1, 1), "inversa": (1, 1),
             "resolver": (2, 2), "forma": (1, 1), "norma": (1, 1)}
-MODELOS = {"regresion": (3, 3), "clasificar": (3, 4), "predecir": (2, 2), "grupos": (3, 4),
-           "dividir": (1, 3), "error_cuadratico": (2, 2), "r2": (2, 2), "exactitud": (2, 2)}
+MODELOS = {"regresion": (3, 3), "arbol": (3, 4), "perceptron": (3, 5), "red_neuronal": (3, 7),
+           "vecinos": (3, 4), "grupos": (3, 4), "predecir": (2, 2), "reglas": (1, 1),
+           "dividir": (1, 3), "error_cuadratico": (2, 2), "r2": (2, 2), "exactitud": (2, 2),
+           "correlacion": (2, 2)}
+CON_TABLA = ("regresion", "arbol", "perceptron", "red_neuronal", "vecinos", "grupos", "dividir")
+# Reciben una funcion escrita por el usuario
+NUMERICOS = {"derivada": (2, 2), "biseccion": (3, 3), "newton": (2, 2), "mapear": (2, 2)}
 TODAS = {**FUNCIONES, **{n: (1, 2 if n in DOS_ARGUMENTOS else 1) for n in MATEMATICAS},
-         **LISTAS, **MATRICES, **MODELOS}
+         **LISTAS, **MATRICES, **MODELOS, **NUMERICOS}
+MAX_PROFUNDIDAD = 100     # llamadas de funciones una dentro de otra (recursion)
 SIN_RESULTADO = ("agregar", "semilla")   # cambian algo y no devuelven nada
 CONSTANTES = {"pi": matematica.PI, "e": matematica.E}
 MAX_VUELTAS = 1_000_000   # un ciclo que da mas vueltas seguramente nunca termina
@@ -47,8 +53,25 @@ OPCIONES_GRAFICA = ("eje_x", "eje_y", "serie", "titulo", "etiqueta_x", "etiqueta
 EJES = ("eje_x", "eje_y", "serie")
 TEXTOS_GRAFICA = ("titulo", "etiqueta_x", "etiqueta_y", "archivo", "color")
 ENTEROS_GRAFICA = {"intervalos": (1, 200), "ancho": (320, 4000), "alto": (240, 4000)}
-COMPARADORES = {"<": operator.lt, "<=": operator.le, ">": operator.gt, ">=": operator.ge}
+COMPARADORES = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b,
+                ">": lambda a, b: a > b, ">=": lambda a, b: a >= b}
 FILAS_EN_PANTALLA = 12
+
+
+@dataclass
+class Funcion:
+    """Una funcion definida en el programa con funcion nombre(a, b) { ... }."""
+    nombre: str
+    parametros: list
+    cuerpo: object      # el nodo bloque del arbol, se visita en cada llamada
+
+
+class Retorno(Exception):
+    """retornar corta la funcion y sube el valor hasta donde se llamo."""
+
+    def __init__(self, valor):
+        super().__init__()
+        self.valor = valor
 
 
 @dataclass
@@ -73,6 +96,8 @@ def clase_de(valor) -> str:
         return "lista"
     if isinstance(valor, dict):
         return "diccionario"
+    if isinstance(valor, Funcion):
+        return "funcion"
     return "numero" if es_numero(valor) else "texto"
 
 
@@ -88,7 +113,7 @@ def describir(valor) -> str:
                 "booleano": "una columna de verdadero/falso", "nulo": "una columna vacía"}[clase]
     return {"tabla": "una tabla", "grupo": "una tabla agrupada", "numero": "un número",
             "texto": "un texto", "booleano": "un booleano", "nulo": "nulo",
-            "lista": "una lista", "diccionario": "un diccionario"}[clase]
+            "lista": "una lista", "diccionario": "un diccionario", "funcion": "una función"}[clase]
 
 
 def limpiar(nombre: str) -> str:
@@ -136,6 +161,8 @@ def texto_de(valor, dentro: bool = False) -> str:
         return f'"{valor}"'
     if isinstance(valor, Tabla):
         return f"<tabla de {len(valor)} filas>"
+    if isinstance(valor, Funcion):
+        return f"<función {valor.nombre}({', '.join(valor.parametros)})>"
     if isinstance(valor, list):
         partes = [texto_de(v, True) for v in valor[:ELEMENTOS_EN_PANTALLA]]
         if len(valor) > ELEMENTOS_EN_PANTALLA:
@@ -163,6 +190,8 @@ class Interprete(EvaVisitor):
         self._entrada = None     # lo que recibe la etapa que se esta ejecutando
         self._tabla = None       # tabla cuyas columnas se pueden nombrar ahora
         self.azar = matematica.Aleatorio()
+        # cada llamada del lenguaje usa unas 25 llamadas de Python al recorrer el arbol
+        sys.setrecursionlimit(max(sys.getrecursionlimit(), 30 * MAX_PROFUNDIDAD + 1000))
 
     def ejecutar(self, arbol) -> None:
         self.visit(arbol)
@@ -213,6 +242,12 @@ class Interprete(EvaVisitor):
         # si el flujo es solo un nombre lo usamos de titulo
         texto = ctx.flujo().getText()
         titulo = " " + texto if re.fullmatch(r"[^\W\d]\w*", texto) else ""
+        textos = isinstance(valor, list) and valor and all(isinstance(v, str) for v in valor)
+        if textos and len(texto_de(valor)) > 100:
+            # una lista larga de textos (como las reglas de un arbol) va una por linea
+            print(f"MONITOR{titulo} ({len(valor)} elementos)")
+            print("\n".join(f"  {v}" for v in valor) + "\n")
+            return
         if matrices.es_matriz(valor) and len(valor) > 1:
             print(f"MONITOR{titulo} (matriz de {len(valor)}x{len(valor[0])})")
             print(como_matriz(valor) + "\n")
@@ -357,6 +392,76 @@ class Interprete(EvaVisitor):
 
     def visitLlamada(self, ctx):
         self._llamada(ctx)
+
+    # --- Funciones del usuario -------------------------------------------------
+
+    def visitFuncion(self, ctx):
+        nombre = ctx.ID().getText()
+        if nombre in TODAS or nombre in AGREGACIONES:
+            raise ErrorSemantico(ctx.ID().symbol, f"'{nombre}' ya es una función del lenguaje; "
+                                                  "ponle otro nombre a la tuya.")
+        parametros = [limpiar(n.getText()) for n in ctx.nombre()]
+        repetidos = {p for p in parametros if parametros.count(p) > 1}
+        if repetidos:
+            raise ErrorSemantico(ctx, f"el parámetro '{repetidos.pop()}' está repetido.")
+        self.simbolos.definir(nombre, "funcion", Funcion(nombre, parametros, ctx.bloque()), ctx.start.line)
+
+    def visitRetornar(self, ctx):
+        if self.simbolos.profundidad == 0:
+            raise ErrorSemantico(ctx, "retornar solo puede ir dentro de una función.")
+        valor = self.visit(ctx.flujo())
+        if isinstance(valor, Columna) and self._tabla is None:
+            valor = list(valor.valores)
+        raise Retorno(valor)
+
+    def _invocar(self, ctx, funcion: Funcion, args: list):
+        if len(args) != len(funcion.parametros):
+            raise ErrorSemantico(ctx, f"{funcion.nombre}() recibe {len(funcion.parametros)} argumentos "
+                                      f"({', '.join(funcion.parametros) or 'ninguno'}) y le llegaron {len(args)}.")
+        if self.simbolos.profundidad >= MAX_PROFUNDIDAD:
+            raise ErrorSemantico(ctx, f"{funcion.nombre}() se llamó a sí misma más de {MAX_PROFUNDIDAD} "
+                                      "veces seguidas; revisa que la recursión tenga un caso que la detenga.")
+        # dentro de la funcion no se ven las columnas de la etapa que la llamo
+        guardado = self._tabla, self._entrada
+        self._tabla = self._entrada = None
+        self.simbolos.entrar()
+        try:
+            for parametro, valor in zip(funcion.parametros, args):
+                self.simbolos.definir(parametro, clase_de(valor), valor, ctx.start.line)
+            self.visit(funcion.cuerpo)
+            return None     # una funcion sin retornar devuelve nulo
+        except Retorno as retorno:
+            return retorno.valor
+        finally:
+            self.simbolos.salir()
+            self._tabla, self._entrada = guardado
+
+    def _como_python(self, ctx, funcion, nombre: str):
+        """Envuelve una funcion del usuario para que la usen los metodos numericos."""
+        if not isinstance(funcion, Funcion):
+            raise ErrorSemantico(ctx, f"{nombre}() recibe primero una función, por ejemplo {nombre}(f, ...), "
+                                      f"y llegó {describir(funcion)}.")
+
+        def llamar(x):
+            resultado = self._invocar(ctx, funcion, [x])
+            if not es_numero(resultado):
+                raise ErrorSemantico(ctx, f"{funcion.nombre}() tiene que devolver un número para "
+                                          f"{nombre}() y devolvió {describir(resultado)}.")
+            return resultado
+        return llamar
+
+    def _numerico(self, ctx, nombre, args):
+        if nombre == "mapear":
+            # aplica la funcion a cada elemento; con una columna devuelve otra columna
+            if not isinstance(args[0], Funcion) or not isinstance(args[1], (list, Columna)):
+                raise ValueError("va así: mapear(funcion, lista) o mapear(funcion, columna)")
+            if isinstance(args[1], Columna):
+                return Columna([None if x is None else self._invocar(ctx, args[0], [x])
+                                for x in args[1].valores])
+            return [self._invocar(ctx, args[0], [x]) for x in args[1]]
+        f = self._como_python(ctx, args[0], nombre)
+        self._exigir(ctx, nombre + "()", "numero", *args[1:])
+        return getattr(matematica, nombre)(f, *args[1:])
 
     def visitBloque(self, ctx):
         for sentencia in ctx.sentencia():
@@ -782,6 +887,10 @@ class Interprete(EvaVisitor):
         nombre = ctx.ID().getText()
         args = [self.visit(e) for e in ctx.expresion()]
 
+        simbolo = self.simbolos.buscar(nombre)
+        if simbolo is not None and isinstance(simbolo.valor, Funcion):
+            return self._invocar(ctx, simbolo.valor, args)
+
         if nombre in AGREGACIONES:
             if len(args) == 1 and isinstance(args[0], list):
                 args = [Columna(args[0])]    # una lista se resume igual que una columna
@@ -809,6 +918,8 @@ class Interprete(EvaVisitor):
                 return getattr(matrices, nombre)(*args)
             if nombre in MODELOS:
                 return self._modelo(nombre, args)
+            if nombre in NUMERICOS:
+                return self._numerico(ctx, nombre, args)
         except (ValueError, TypeError, OverflowError, ZeroDivisionError) as error:
             raise ErrorSemantico(ctx, f"{nombre}(): {error}.")
         return self._llamar(ctx, nombre, args)
@@ -912,7 +1023,7 @@ class Interprete(EvaVisitor):
         raise ValueError(f"no se pudo convertir {texto_de(valor, True)} en número")
 
     def _modelo(self, nombre, args):
-        if nombre in ("regresion", "clasificar", "grupos", "dividir") and not isinstance(args[0], Tabla):
+        if nombre in CON_TABLA and not isinstance(args[0], Tabla):
             raise ValueError(f"el primer argumento tiene que ser una tabla y llegó {describir(args[0])}")
         return getattr(aprendizaje, nombre)(*args)
 

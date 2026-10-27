@@ -1,4 +1,4 @@
-"""Fase 3 (segunda parte): vocabulario en espanol, ciclos, listas y diccionarios,
+"""Fase 3 (segunda parte): vocabulario en espanol, ciclos, funciones, listas y diccionarios,
 y las librerias propias de matematicas, matrices y aprendizaje automatico."""
 
 import math
@@ -275,7 +275,7 @@ def test_regresion_con_ruido_se_acerca():
 def test_vecinos_clasifica_dos_nubes():
     t = Tabla(["a", "b", "clase"], {"a": [0, 1, 0, 1, 10, 11, 10, 11], "b": [0, 0, 1, 1, 10, 10, 11, 11],
                                     "clase": ["azul"] * 4 + ["rojo"] * 4})
-    modelo = aprendizaje.clasificar(t, ["a", "b"], "clase", 3)
+    modelo = aprendizaje.vecinos(t, ["a", "b"], "clase", 3)
     nuevos = Tabla(["a", "b"], {"a": [0.5, 10.5], "b": [0.2, 9.8]})
     assert aprendizaje.predecir(modelo, nuevos)["prediccion"].valores == ["azul", "rojo"]
 
@@ -306,7 +306,7 @@ def test_modelos_en_el_lenguaje(datos):
 limpia = t |> quitar faltantes
 m = regresion(limpia, "sincronizacion", "armonicos")
 p = predecir(m, limpia)
-c = clasificar(limpia, ["sincronizacion", "armonicos"], "piloto", 1)
+c = vecinos(limpia, ["sincronizacion", "armonicos"], "piloto", 1)
 q = predecir(c, limpia)
 g = grupos(limpia, "sincronizacion", 2)""")
     assert valor(i, "m")["tipo"] == "regresion" and "prediccion" in valor(i, "p").columnas
@@ -320,3 +320,163 @@ def test_errores_de_modelos(datos):
     assert "numérica" in falla(limpia + '\nm = regresion(l, "piloto", "armonicos")')
     assert "modelo" in falla("m = predecir(5, 3)")
     assert "k tiene que ser" in falla(limpia + '\nm = grupos(l, "sincronizacion", 50)')
+
+
+# --- Funciones del usuario ------------------------------------------------------------------
+
+def test_funcion_con_parametros_y_retorno():
+    assert v("funcion promedio(a, b) { retornar (a + b) / 2 }\nr = promedio(4, 10)") == 7
+
+
+def test_funcion_recursiva():
+    assert v("""funcion fact(n) {
+    si n <= 1 { retornar 1 }
+    retornar n * fact(n - 1)
+}
+r = fact(10)""") == 3628800
+
+
+def test_retornar_corta_ciclos():
+    assert v("""funcion primero_mayor(lista, limite) {
+    para x en lista { si x > limite { retornar x } }
+    retornar nulo
+}
+r = primero_mayor([1, 5, 9, 12], 6)""") == 9
+
+
+def test_las_variables_de_la_funcion_son_locales():
+    i = correr("x = 1\nfuncion f(a) { x = a * 100\n retornar x }\nr = f(2)")
+    assert valor(i, "r") == 200 and valor(i, "x") == 1
+
+
+def test_la_funcion_ve_las_variables_globales():
+    assert v("iva = 0.19\nfuncion con_iva(p) { retornar p * (1 + iva) }\nr = con_iva(100)") == pytest.approx(119)
+
+
+def test_funcion_que_recibe_y_devuelve_una_tabla(datos):
+    t = v(CARGA + """
+funcion de_piloto(tabla, nombre) {
+    retornar tabla |> filtrar donde piloto == nombre |> seleccionar [piloto, sincronizacion]
+}
+r = de_piloto(t, "Shinji")""")
+    assert len(t) == 2 and t.columnas == ["piloto", "sincronizacion"]
+
+
+def test_funcion_sin_retornar_devuelve_nulo():
+    assert v("funcion nada() { x = 1 }\nr = nada()") is None
+
+
+def test_errores_de_funciones():
+    assert "recibe 2 argumentos" in falla("funcion f(a, b) { retornar a }\nx = f(1)")
+    assert "solo puede ir dentro de una función" in falla("retornar 5")
+    assert "ya es una función del lenguaje" in falla("funcion media(a) { retornar a }")
+    assert "repetido" in falla("funcion f(a, a) { retornar a }")
+    assert "recursión" in falla("funcion f(n) { retornar f(n + 1) }\nx = f(1)")
+
+
+def test_mapear_con_lista_y_columna(datos):
+    assert v("funcion doble(x) { retornar x * 2 }\nr = mapear(doble, [1, 2, 3])") == [2, 4, 6]
+    t = v(CARGA + """
+funcion nivel(s) { si s >= 80 { retornar "alto" } retornar "bajo" }
+r = t |> crear n = mapear(nivel, sincronizacion)""")
+    assert t["n"].valores == ["bajo", "alto", "bajo", None, "alto"]
+
+
+# --- Metodos numericos con funciones del usuario -----------------------------------------------
+
+def test_raices_por_biseccion_y_newton():
+    codigo = "funcion f(x) { retornar x ^ 2 - 2 }\n"
+    assert v(codigo + "r = biseccion(f, 0, 2)") == pytest.approx(math.sqrt(2), abs=1e-10)
+    assert v(codigo + "r = newton(f, 1)") == pytest.approx(math.sqrt(2), abs=1e-10)
+    assert v(codigo + "r = derivada(f, 3)") == pytest.approx(6, abs=1e-6)
+    assert "mismo signo" in falla(codigo + "r = biseccion(f, 2, 3)")
+    assert "recibe primero una función" in falla("r = newton(5, 1)")
+
+
+# --- Arbol, perceptron, red neuronal y correlacion ----------------------------------------------
+
+def test_arbol_encuentra_el_corte():
+    t = Tabla(["x", "clase"], {"x": [1, 2, 3, 4, 10, 11, 12, 13], "clase": ["a"] * 4 + ["b"] * 4})
+    modelo = aprendizaje.arbol(t, "x", "clase")
+    assert modelo["raiz"]["umbral"] == 7 and modelo["exactitud"] == 1
+    assert aprendizaje.reglas(modelo) == ["si x <= 7 -> a (4 filas)", "si x > 7 -> b (4 filas)"]
+
+
+def test_arbol_con_dos_variables_y_profundidad():
+    # la clase depende de x y de y a la vez: hace falta profundidad 2
+    puntos = [(x, y) for x in range(4) for y in range(4)]
+    t = Tabla(["x", "y", "c"], {"x": [p[0] for p in puntos], "y": [p[1] for p in puntos],
+                                "c": ["si" if p[0] >= 2 and p[1] >= 2 else "no" for p in puntos]})
+    assert aprendizaje.arbol(t, ["x", "y"], "c", 1)["exactitud"] < 1
+    assert aprendizaje.arbol(t, ["x", "y"], "c", 2)["exactitud"] == 1
+
+
+def test_arbol_de_regresion_predice_promedios():
+    t = Tabla(["x", "y"], {"x": [1, 2, 3, 10, 11, 12], "y": [5, 5, 5, 20, 22, 24]})
+    modelo = aprendizaje.arbol(t, "x", "y", 1)
+    assert modelo["clase"] == "regresion"
+    assert aprendizaje.predecir(modelo, 2) == 5 and aprendizaje.predecir(modelo, 11) == 22
+
+
+def test_gini():
+    assert aprendizaje.gini(["a", "a"]) == 0
+    assert aprendizaje.gini(["a", "b"]) == 0.5
+
+
+def test_perceptron_separa_y_la_perdida_baja():
+    t = Tabla(["a", "b", "c"], {"a": [0, 1, 0, 1, 5, 6, 5, 6], "b": [0, 0, 1, 1, 5, 5, 6, 6],
+                                "c": [False] * 4 + [True] * 4})
+    modelo = aprendizaje.perceptron(t, ["a", "b"], "c", 0.5, 200)
+    assert modelo["exactitud"] == 1
+    assert modelo["perdidas"][-1] < modelo["perdidas"][0]
+    assert all(b <= a + 1e-12 for a, b in zip(modelo["perdidas"], modelo["perdidas"][1:]))
+    assert aprendizaje.predecir(modelo, [5.5, 5.5]) is True
+
+
+def test_perceptron_gradiente_coincide_con_la_derivada_numerica():
+    # con una sola epoca, el paso que da es -tasa * gradiente; se compara con la derivada numerica
+    t = Tabla(["x", "c"], {"x": [-2, -1, 1, 3], "c": [0, 0, 1, 1]})
+    modelo = aprendizaje.perceptron(t, "x", "c", 1.0, 1)
+    medias, desv = aprendizaje._escala([[x] for x in [-2, -1, 1, 3]])
+    xs = [(x - medias[0]) / desv[0] for x in [-2, -1, 1, 3]]
+
+    def perdida(w):
+        return sum(aprendizaje._entropia(aprendizaje.sigmoide(w * x), y) for x, y in zip(xs, [0, 0, 1, 1])) / 4
+
+    h = 1e-6
+    numerica = (perdida(h) - perdida(-h)) / (2 * h)
+    assert modelo["pesos"][0] == pytest.approx(-numerica, rel=1e-5)
+
+
+def test_perceptron_necesita_dos_clases():
+    t = Tabla(["x", "c"], {"x": [1, 2, 3], "c": ["a", "b", "c"]})
+    with pytest.raises(ValueError, match="exactamente 2 clases"):
+        aprendizaje.perceptron(t, "x", "c")
+
+
+def test_red_neuronal_aprende_xor():
+    # XOR no se puede separar con una linea (un perceptron solo no puede), la red si
+    t = Tabla(["a", "b", "c"], {"a": [0, 0, 1, 1] * 5, "b": [0, 1, 0, 1] * 5, "c": ["no", "si", "si", "no"] * 5})
+    red = aprendizaje.red_neuronal(t, ["a", "b"], "c", 4, 0.5, 400)
+    assert red["exactitud"] == 1
+    assert red["perdida"] < red["perdidas"][0]
+    assert aprendizaje.perceptron(t, ["a", "b"], "c", 0.5, 400)["exactitud"] < 1
+
+
+def test_correlacion():
+    assert aprendizaje.correlacion([1, 2, 3], [2, 4, 6]) == pytest.approx(1)
+    assert aprendizaje.correlacion([1, 2, 3], [3, 2, 1]) == pytest.approx(-1)
+    assert "constante" in falla("x = correlacion([1, 1], [1, 2])")
+
+
+def test_modelos_nuevos_en_el_lenguaje(datos):
+    i = correr(CARGA + """
+limpia = t |> quitar faltantes |> crear alta = sincronizacion > 70
+a = arbol(limpia, "sincronizacion", "piloto", 2)
+reg = reglas(a)
+p = perceptron(limpia, ["sincronizacion", "armonicos"], "alta")
+red = red_neuronal(limpia, "sincronizacion", "piloto", 3, 0.5, 50)
+q = predecir(red, limpia)""")
+    assert valor(i, "a")["tipo"] == "arbol" and all(r.startswith("si ") for r in valor(i, "reg"))
+    assert valor(i, "p")["exactitud"] == 1
+    assert "prediccion" in valor(i, "q").columnas

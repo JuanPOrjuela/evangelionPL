@@ -186,3 +186,45 @@ class Aleatorio:
             j = self.entero(0, i)
             lista[i], lista[j] = lista[j], lista[i]
         return lista
+
+
+# --- Metodos numericos: reciben una funcion f(x) que escribe el usuario ----------------
+
+def derivada(f, x, h=1e-6):
+    """Derivada con diferencia centrada: (f(x + h) - f(x - h)) / 2h."""
+    return (f(x + h) - f(x - h)) / (2 * h)
+
+
+def biseccion(f, a, b, tolerancia=1e-12):
+    """Raiz de f entre a y b: se parte el intervalo a la mitad y se queda la mitad
+    donde f cambia de signo, hasta que el intervalo es mas pequeno que la tolerancia."""
+    fa, fb = f(a), f(b)
+    if fa == 0:
+        return a
+    if fb == 0:
+        return b
+    if (fa < 0) == (fb < 0):
+        raise ValueError("f(a) y f(b) tienen el mismo signo, así que no se sabe si hay una raíz en medio")
+    for _ in range(200):
+        medio = (a + b) / 2
+        fm = f(medio)
+        if fm == 0 or (b - a) / 2 < tolerancia:
+            return medio
+        if (fm < 0) == (fa < 0):
+            a, fa = medio, fm
+        else:
+            b = medio
+    return (a + b) / 2
+
+
+def newton(f, x, tolerancia=1e-12):
+    """Metodo de Newton-Raphson: x = x - f(x) / f'(x), con la derivada numerica."""
+    for _ in range(100):
+        pendiente = derivada(f, x)
+        if pendiente == 0:
+            raise ValueError("la derivada se hizo 0 y Newton no puede seguir; prueba otro punto de inicio")
+        siguiente = x - f(x) / pendiente
+        if absoluto(siguiente - x) <= tolerancia * (1 + absoluto(siguiente)):
+            return siguiente
+        x = siguiente
+    raise ValueError("Newton no convergió en 100 pasos; prueba otro punto de inicio o usa biseccion()")

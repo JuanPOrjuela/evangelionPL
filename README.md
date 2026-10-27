@@ -38,7 +38,7 @@ SEELE por_piloto como "salidas/resumen.csv"
 | 1 | Gramática, lexer y parser, árbol de análisis, errores léxicos y sintácticos | Lista |
 | 2 | Visitor, tabla de símbolos, ejecución sobre datos con la librería propia, agregaciones, exportar CSV, errores semánticos | Lista |
 | 3 | Cinco tipos de gráfica en PNG o SVG con títulos, ejes y leyendas, caso de estudio con datos reales y pruebas de regresión | Lista |
-| 3 (segunda parte) | Palabras en español, `sino si`, ciclos `mientras` y `para`, listas y diccionarios, y librerías propias de matemáticas, matrices y aprendizaje automático (regresión, clasificación y agrupamiento) | Lista |
+| 3 (segunda parte) | Palabras en español, `sino si`, ciclos `mientras` y `para`, funciones con parámetros y retorno, listas y diccionarios, y librerías propias de matemáticas, métodos numéricos, matrices y aprendizaje automático (regresión lineal, árboles de decisión, perceptrón, red neuronal, k vecinos y k-medias) | Lista |
 
 El manual completo (de usuario y técnico), con la tabla de tokens, la gramática en
 EBNF, las reglas semánticas, cómo se dibujan las gráficas y el reporte de pruebas,
@@ -188,6 +188,7 @@ en español; las dos hacen lo mismo y se pueden mezclar en un programa.
 | | `mientras c { }` | Repite mientras la condición sea verdadera |
 | | `para i desde 1 hasta 10 { }` | Repite con un contador (incluye los dos extremos) |
 | | `para x en lista { }` | Recorre una lista, un texto, las claves de un diccionario o las filas de una tabla |
+| | `funcion f(a, b) { retornar ... }` | Define una función con parámetros que devuelve un resultado |
 
 ### Listas y diccionarios
 
@@ -211,16 +212,41 @@ también reciben listas.
 | Librería | Funciones |
 |---|---|
 | Matemáticas (`matematica.py`) | `raiz(x)`, `raiz(x, n)`, `exp`, `ln`, `log(x)`, `log(x, base)`, `sen`, `cos`, `tan`, `piso`, `techo`, `factorial`, `redondear`, `absoluto`, y las constantes `pi` y `e` |
+| Métodos numéricos | `biseccion(f, a, b)` y `newton(f, x0)` (raíces de una función), `derivada(f, x)`, `mapear(f, lista o columna)` |
 | Matrices (`matrices.py`) | `ceros`, `unos`, `identidad`, `transpuesta`, `producto`, `punto`, `determinante`, `inversa`, `resolver(A, b)`, `forma`, `norma` |
-| Aprendizaje (`aprendizaje.py`) | `regresion(tabla, variables, objetivo)`, `clasificar(tabla, variables, objetivo, k)`, `predecir(modelo, tabla)`, `grupos(tabla, variables, k)`, `dividir(tabla, 0.8)`, `error_cuadratico`, `r2`, `exactitud` |
+| Predicción | `regresion(tabla, variables, objetivo)` (regresión lineal), `arbol(...)` con un objetivo numérico |
+| Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas)`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)`, `vecinos(tabla, variables, objetivo, k)` |
+| Agrupamiento | `grupos(tabla, variables, k)` (k-medias) |
+| Evaluación | `predecir(modelo, tabla)`, `dividir(tabla, 0.8)`, `error_cuadratico`, `r2`, `exactitud`, `correlacion` |
 
 ```
 partes = dividir(datos, 0.8)
 modelo = regresion(partes[0], ["energia", "pib"], "co2")
 mostrar modelo.r2
 resultado = predecir(modelo, partes[1])         # agrega la columna prediccion
+decision = arbol(partes[0], ["energia", "pib"], "nivel", 3)
+mostrar reglas(decision)                        # el árbol escrito como reglas "si ... -> ..."
+neurona = perceptron(partes[0], ["energia", "pib"], "contamina_mucho", 0.5, 300)
+mostrar neurona.perdidas                        # la pérdida de cada época
 agrupados = grupos(datos, ["co2", "energia"], 3)  # agrega la columna grupo
 ```
+
+### Funciones
+
+```
+funcion nivel(toneladas) {
+    si toneladas > 3 { retornar "alto" }
+    retornar "bajo"
+}
+datos = datos |> crear nivel = mapear(nivel, co2_per_capita)
+
+funcion f(x) { retornar x ^ 2 - 2 }
+mostrar biseccion(f, 0, 2)      # raíz de f entre 0 y 2: 1.4142...
+```
+
+Una función recibe parámetros, puede devolver cualquier valor (también una
+tabla) y sus variables son locales: no cambian las de afuera. Puede llamarse a sí
+misma (recursión, hasta 100 niveles).
 
 Los ejemplos `06_listas_ciclos_y_matematicas.eva` y `07_matrices_y_modelos.eva`
 muestran todo esto.
@@ -274,7 +300,7 @@ src/evangelion/
     tablas.py         librería propia: tablas, columnas, estadísticas y CSV
     matematica.py     librería propia: raíz, exp, ln, seno, coseno, piso, azar...
     matrices.py       librería propia: vectores y matrices (como NumPy)
-    aprendizaje.py    librería propia: regresión, k vecinos y k-medias
+    aprendizaje.py    librería propia: regresión, árboles, perceptrón, red neuronal, k vecinos y k-medias
     graficas.py       fase 3: ejes, escalas, leyenda y los cinco tipos de gráfica
     lienzo.py         fase 3: dibujo en píxeles, formato PNG y SVG
     fuente.py         la letra de píxeles de las gráficas
@@ -306,9 +332,20 @@ Lo mismo con las gráficas: escalas, cuartiles, dibujo, letra y formato PNG est�
 escritos a mano. Las matemáticas no usan el módulo `math`: la raíz sale del método
 de Newton, `exp`, `ln`, seno y coseno de series de Taylor, y el azar de un generador
 congruencial con semilla. Las matrices se invierten y los sistemas se resuelven con
-eliminación de Gauss-Jordan, la regresión con las ecuaciones normales, la
-clasificación con k vecinos y el agrupamiento con k-medias. Lo único que viene de afuera es el runtime de ANTLR4, que es la
-herramienta que pide el curso, y pytest, que solo se usa para correr las pruebas.
+eliminación de Gauss-Jordan, y las raíces de una función con bisección o
+Newton-Raphson. En aprendizaje automático: la regresión lineal sale de las
+ecuaciones normales; el árbol de decisión (CART) prueba cada corte posible y se
+queda con el de menor índice de Gini (o menor varianza si predice un número); el
+perceptrón y la red neuronal se entrenan con descenso de gradiente usando las
+derivadas parciales de la entropía cruzada (en la red, con retropropagación por la
+regla de la cadena); además hay k vecinos y k-medias. Las ideas de estos
+algoritmos siguen los libros *Grokking Machine Learning* (Serrano, caps. 3, 5, 6,
+9, 10 y apéndice B) y *Grokking Artificial Intelligence Algorithms* (Hurbans,
+caps. 8 y 9).
+
+Lo único que viene de afuera es el runtime de ANTLR4, que es la herramienta que
+pide el curso, y pytest, que solo se usa para correr las pruebas. Las dependencias
+están en `pyproject.toml`.
 
 ## Pruebas
 
@@ -316,14 +353,17 @@ herramienta que pide el curso, y pytest, que solo se usa para correr las pruebas
 python -m pytest
 ```
 
-Son 278 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 298 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco
 tipos de gráfica, las opciones de `HOLOGRAM` y el caso de estudio completo. Las
 matemáticas propias se comparan contra `math` de Python (solo dentro de las
 pruebas) y hay una prueba que revisa que ningún archivo del lenguaje importe
-`math`, `numpy`, `pandas` ni `matplotlib`. Las
+`math`, `numpy`, `pandas` ni `matplotlib`. Los modelos se prueban con casos de
+respuesta conocida (una recta exacta, dos nubes de puntos, el XOR que un perceptrón
+solo no puede separar y la red sí) y el gradiente del perceptrón se compara con
+la derivada numérica. Las
 pruebas de las fases 1 y 2 siguen corriendo, así que sirven de regresión.
 
 ## Cambiar la gramática

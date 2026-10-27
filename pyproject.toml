@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "evangelionpl"
+version = "3.0"
+description = "Lenguaje de dominio específico para análisis de datos, hecho con ANTLR4 y librerías propias"
+authors = [{ name = "Julian Beltran" }, { name = "Juan Orjuela" }, { name = "Santiago Ortegon" }]
+requires-python = ">=3.10"
+# lo unico de afuera es el runtime de ANTLR, que pide el curso
+dependencies = ["antlr4-python3-runtime==4.13.2"]
+
+[project.optional-dependencies]
+pruebas = ["pytest"]
+
+[project.scripts]
+eva = "evangelion.cli:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
