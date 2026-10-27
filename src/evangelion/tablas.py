@@ -297,6 +297,63 @@ class Tabla:
             registros.append(registro)
         return Tabla.de_registros(registros, list(claves) + [nombre for nombre, _, _ in calculos])
 
+    def predecir_knn(self, objetivo: str, predictoras: list, k: int) -> "Columna":
+        """Predice la columna `objetivo` para cada fila con el algoritmo de los k
+        vecinos mas cercanos, usando distancia euclidiana sobre las `predictoras`
+        normalizadas a [0, 1]. Es leave-one-out: cada fila se predice con las demas
+        filas de la tabla, nunca consigo misma.
+
+        Si el objetivo es numerico se promedia el valor de los k vecinos, si es
+        texto o booleano se toma el mas frecuente. Una fila con algun dato faltante
+        en las predictoras no se puede predecir (sale None), y una fila con el
+        objetivo faltante no puede servir de vecina de nadie.
+        """
+        # normalizar cada predictora a [0, 1]; una columna constante no aporta nada
+        # a la distancia, por eso se evita la division por cero dejandola en 0
+        rangos = {}
+        for columna in predictoras:
+            minimo, maximo = self[columna].minimo(), self[columna].maximo()
+            rangos[columna] = (minimo, maximo - minimo if maximo != minimo else 1)
+
+        def normalizar(indice: int, columna: str):
+            valor = self._datos[columna][indice]
+            if valor is None:
+                return None
+            minimo, amplitud = rangos[columna]
+            return (valor - minimo) / amplitud
+
+        vectores = [[normalizar(i, columna) for columna in predictoras] for i in range(len(self))]
+        objetivos = self._datos[objetivo]
+        es_numerico = self[objetivo].clase() == "numero"
+
+        # solo sirven de vecinas las filas con todas las predictoras y el objetivo presentes
+        candidatos = [i for i in range(len(self))
+                     if objetivos[i] is not None and None not in vectores[i]]
+
+        predicciones = []
+        for i in range(len(self)):
+            if None in vectores[i]:
+                predicciones.append(None)   # sin predictoras completas no se puede predecir
+                continue
+            distancias = []
+            for j in candidatos:
+                if j == i:
+                    continue   # leave-one-out: una fila nunca es vecina de si misma
+                suma = sum((a - b) ** 2 for a, b in zip(vectores[i], vectores[j]))
+                distancias.append((suma ** 0.5, objetivos[j]))
+            distancias.sort(key=lambda par: par[0])
+            vecinos = [valor for _, valor in distancias[:k]]
+            if not vecinos:
+                predicciones.append(None)
+            elif es_numerico:
+                predicciones.append(Columna(vecinos).media())
+            else:
+                conteo = {}
+                for valor in vecinos:
+                    conteo[valor] = conteo.get(valor, 0) + 1
+                predicciones.append(max(conteo, key=conteo.get))
+        return Columna(predicciones, nombre=f"{objetivo}_prediccion")
+
     def como_texto(self) -> str:
         """La tabla lista para imprimir: numeros a la derecha y textos a la izquierda."""
         bloques = []

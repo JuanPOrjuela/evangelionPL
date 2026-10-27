@@ -61,6 +61,7 @@ etapa
     | MAGI agregacion ( COMA agregacion )*                      # etapaResumir
     | BATTERY ENTERO                                            # etapaLimitar
     | DIAGNOSTIC                                                # etapaDiagnostico
+    | PROFECIA nombre POR listaColumnas VECINOS ENTERO          # etapaProfecia
     ;
 
 columnaNueva  : nombre IGUAL expresion ;
@@ -121,6 +122,7 @@ SQUAD      : 'SQUAD' | 'agrupar' ;
 MAGI       : 'MAGI' | 'resumir' ;
 BATTERY    : 'BATTERY' | 'limitar' ;
 DIAGNOSTIC : 'DIAGNOSTIC' | 'diagnosticar' ;
+PROFECIA   : 'PROFECIA' | 'pronosticar' ;
 
 // --- Funciones ---
 FUNCION    : 'funcion' ;
@@ -144,6 +146,7 @@ DESC       : 'desc' ;
 DUPLICADOS : 'duplicados' ;
 FALTANTES  : 'faltantes' ;
 COLUMNAS   : 'columnas' ;
+VECINOS    : 'vecinos' ;
 
 // --- Operadores logicos y literales fijos ---
 Y         : 'y' ;

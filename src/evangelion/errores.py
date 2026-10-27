@@ -34,7 +34,8 @@ ALIAS = {"NERV": "programa", "ENTRY_PLUG": "cargar", "MONITOR": "mostrar", "SEEL
          "HOLOGRAM": "graficar", "PATTERN_BLUE": "si", "PATTERN_ORANGE": "sino",
          "TARGET": "seleccionar", "AT_FIELD": "filtrar", "SYNC": "crear", "CODENAME": "renombrar",
          "FORMATION": "ordenar", "EJECT": "quitar", "DUMMY_PLUG": "rellenar", "EQUIP": "convertir",
-         "SQUAD": "agrupar", "MAGI": "resumir", "BATTERY": "limitar", "DIAGNOSTIC": "diagnosticar"}
+         "SQUAD": "agrupar", "MAGI": "resumir", "BATTERY": "limitar", "DIAGNOSTIC": "diagnosticar",
+         "PROFECIA": "pronosticar"}
 
 # Las palabras reservadas salen del lexer generado: 'MAGI', 'donde', ... mas los alias
 RESERVADAS = ({n[1:-1] for n in EvaLexer.literalNames if n[1:-1].replace("_", "").isalpha()}

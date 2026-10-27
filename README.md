@@ -5,8 +5,8 @@
 - Santiago Ortegon
 
 Un lenguaje de dominio específico para analizar datos, con vocabulario de
-*Neon Genesis Evangelion*. Proyecto del curso **Lenguajes de Programación y
-Transducción** (Universidad Sergio Arboleda, 2026-2), hecho con ANTLR4 y Python.
+*Neon Genesis Evangelion*. Proyecto de **Lenguajes de Programación y
+Transducción** lo hicimos con ANTLR4 y Python.
 El manejo de las tablas no usa pandas ni ninguna otra librería: lo hace una
 librería propia que está en `src/evangelion/tablas.py`. Las gráficas tampoco usan
 Matplotlib: se dibujan píxel por píxel y el PNG se arma desde cero.
@@ -215,7 +215,7 @@ también reciben listas.
 | Métodos numéricos | `biseccion(f, a, b)` y `newton(f, x0)` (raíces de una función), `derivada(f, x)`, `mapear(f, lista o columna)` |
 | Matrices (`matrices.py`) | `ceros`, `unos`, `identidad`, `transpuesta`, `producto`, `punto`, `determinante`, `inversa`, `resolver(A, b)`, `forma`, `norma` |
 | Predicción | `regresion(tabla, variables, objetivo)` (regresión lineal), `arbol(...)` con un objetivo numérico |
-| Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas)`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)`, `vecinos(tabla, variables, objetivo, k)` |
+| Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas)`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)`, `knn(tabla, variables, objetivo, k)` y la etapa `PROFECIA objetivo por [a, b] vecinos k` (alias `pronosticar`) |
 | Agrupamiento | `grupos(tabla, variables, k)` (k-medias) |
 | Evaluación | `predecir(modelo, tabla)`, `dividir(tabla, 0.8)`, `error_cuadratico`, `r2`, `exactitud`, `correlacion` |
 
@@ -353,7 +353,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 311 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 314 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco
@@ -368,8 +368,7 @@ pruebas de las fases 1 y 2 siguen corriendo, así que sirven de regresión.
 
 ## Cambiar la gramática
 
-Si se edita `grammar/Eva.g4` hay que volver a generar el lexer y el parser. Para eso sí
-hace falta Java 11 o superior:
+Si se edita `grammar/Eva.g4` hay que volver a generar el lexer y el parser. :
 
 ```
 python regenerar.py

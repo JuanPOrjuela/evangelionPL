@@ -275,7 +275,7 @@ def test_regresion_con_ruido_se_acerca():
 def test_vecinos_clasifica_dos_nubes():
     t = Tabla(["a", "b", "clase"], {"a": [0, 1, 0, 1, 10, 11, 10, 11], "b": [0, 0, 1, 1, 10, 10, 11, 11],
                                     "clase": ["azul"] * 4 + ["rojo"] * 4})
-    modelo = aprendizaje.vecinos(t, ["a", "b"], "clase", 3)
+    modelo = aprendizaje.knn(t, ["a", "b"], "clase", 3)
     nuevos = Tabla(["a", "b"], {"a": [0.5, 10.5], "b": [0.2, 9.8]})
     assert aprendizaje.predecir(modelo, nuevos)["prediccion"].valores == ["azul", "rojo"]
 
@@ -306,7 +306,7 @@ def test_modelos_en_el_lenguaje(datos):
 limpia = t |> quitar faltantes
 m = regresion(limpia, "sincronizacion", "armonicos")
 p = predecir(m, limpia)
-c = vecinos(limpia, ["sincronizacion", "armonicos"], "piloto", 1)
+c = knn(limpia, ["sincronizacion", "armonicos"], "piloto", 1)
 q = predecir(c, limpia)
 g = grupos(limpia, "sincronizacion", 2)""")
     assert valor(i, "m")["tipo"] == "regresion" and "prediccion" in valor(i, "p").columnas
@@ -540,3 +540,25 @@ def test_red_neuronal_se_repite_con_la_misma_semilla():
     uno = aprendizaje.red_neuronal(t, "a", "c", 3, 0.5, 30)
     otro = aprendizaje.red_neuronal(t, "a", "c", 3, 0.5, 30)
     assert uno["perdidas"] == otro["perdidas"]
+
+
+# --- Etapa PROFECIA (k vecinos dentro del flujo) ------------------------------------------------
+
+def test_profecia_predice_con_los_vecinos():
+    t = v('t = tabla_de({"x": [1, 2, 3, 10, 11, 12], "c": ["a", "a", "a", "b", "b", "b"]})\n'
+          "r = t |> PROFECIA c por [x] vecinos 2")
+    assert t["c_prediccion"].valores == ["a", "a", "a", "b", "b", "b"]
+
+
+def test_profecia_en_espanol_y_con_numeros():
+    t = v('t = tabla_de({"x": [1, 2, 3, 4], "z": [10, 20, 30, 40]})\n'
+          "r = t |> pronosticar z por [x] vecinos 2")
+    # cada fila se predice con las demas: la fila x=2 tiene de vecinas a x=1 y x=3
+    assert t["z_prediccion"].valores[1] == 20
+
+
+def test_errores_de_profecia():
+    base = 't = tabla_de({"x": [1, 2, 3], "c": ["a", "b", "a"]})\n'
+    assert "solo tiene 3 filas" in falla(base + "r = t |> PROFECIA c por [x] vecinos 3")
+    assert "a la vez el objetivo" in falla(base + "r = t |> PROFECIA x por [x] vecinos 1")
+    assert "necesita números" in falla(base + "r = t |> PROFECIA x por [c] vecinos 1")

@@ -7,7 +7,7 @@ Clasificacion (una categoria):
 - arbol: arbol de decision con el indice de Gini.
 - perceptron: una neurona con sigmoide entrenada con descenso de gradiente.
 - red_neuronal: perceptron multicapa (una capa oculta) entrenado con retropropagacion.
-- vecinos: k vecinos mas cercanos.
+- knn: k vecinos mas cercanos (en el flujo tambien esta la etapa PROFECIA).
 Agrupamiento (sin respuesta conocida):
 - grupos: k-medias.
 
@@ -89,7 +89,7 @@ def regresion(tabla: Tabla, variables, objetivo: str) -> dict:
 
 # --- Clasificacion: k vecinos mas cercanos -----------------------------------------
 
-def vecinos(tabla: Tabla, variables, objetivo: str, k: int = 3) -> dict:
+def knn(tabla: Tabla, variables, objetivo: str, k: int = 3) -> dict:
     """Guarda los puntos de entrenamiento; la prediccion se hace al llamar predecir()."""
     variables = _lista_de_variables(variables)
     _revisar_columnas(tabla, variables)
@@ -98,7 +98,7 @@ def vecinos(tabla: Tabla, variables, objetivo: str, k: int = 3) -> dict:
         raise ValueError(f"k tiene que ser un entero entre 1 y {len(tabla)} (las filas de la tabla)")
     puntos = _puntos(tabla, variables)
     medias, desviaciones = _escala(puntos)
-    return {"tipo": "vecinos", "variables": variables, "objetivo": objetivo, "k": k,
+    return {"tipo": "knn", "variables": variables, "objetivo": objetivo, "k": k,
             "medias": medias, "desviaciones": desviaciones,
             "puntos": _escalar(puntos, medias, desviaciones),
             "etiquetas": list(tabla[objetivo].valores)}
@@ -121,7 +121,7 @@ def _votar(modelo: dict, punto: list):
 def _revisar_modelo(modelo) -> None:
     if not isinstance(modelo, dict) or modelo.get("tipo") not in PREDICTORES:
         raise ValueError("predecir() necesita un modelo hecho con regresion(), arbol(), "
-                         "perceptron(), red_neuronal() o vecinos()")
+                         "perceptron(), red_neuronal() o knn()")
 
 
 def predecir(modelo: dict, datos):
@@ -146,7 +146,7 @@ def _predecir_uno(modelo: dict, punto: list):
     if modelo["tipo"] == "arbol":
         return _bajar_por_el_arbol(modelo["raiz"], dict(zip(modelo["variables"], punto)))
     escalado = _escalar([punto], modelo["medias"], modelo["desviaciones"])[0]
-    if modelo["tipo"] == "vecinos":
+    if modelo["tipo"] == "knn":
         return _votar(modelo, escalado)
     if modelo["tipo"] == "perceptron":
         probabilidad = sigmoide(matrices.punto(modelo["pesos"], escalado) + modelo["sesgo"])
@@ -155,7 +155,7 @@ def _predecir_uno(modelo: dict, punto: list):
     return modelo["clases"][max(range(len(salida)), key=lambda c: salida[c])]
 
 
-PREDICTORES = ("regresion", "arbol", "vecinos", "perceptron", "red_neuronal")
+PREDICTORES = ("regresion", "arbol", "knn", "perceptron", "red_neuronal")
 
 
 # --- Agrupamiento: k-medias -----------------------------------------------------------
