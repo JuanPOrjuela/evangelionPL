@@ -21,8 +21,8 @@ FUNCIONES = {"filas": (1, 1), "redondear": (1, 2), "absoluto": (1, 1),
 # Matematicas de un solo numero; tambien sirven con columnas y listas
 MATEMATICAS = {"raiz": matematica.raiz, "exp": matematica.exp, "ln": matematica.ln,
                "log": matematica.log, "sen": matematica.sen, "cos": matematica.cos,
-               "tan": matematica.tan, "piso": matematica.piso, "techo": matematica.techo,
-               "factorial": matematica.factorial}
+               "tan": matematica.tan, "tanh": matematica.tanh, "piso": matematica.piso,
+               "techo": matematica.techo, "factorial": matematica.factorial}
 DOS_ARGUMENTOS = {"raiz", "log"}   # raiz(x, 3) y log(x, 2)
 LISTAS = {"longitud": (1, 1), "agregar": (2, 2), "sacar": (1, 2), "contiene": (2, 2),
           "rango": (1, 3), "ordenada": (1, 1), "invertida": (1, 1), "unir": (2, 2),
@@ -31,7 +31,7 @@ LISTAS = {"longitud": (1, 1), "agregar": (2, 2), "sacar": (1, 2), "contiene": (2
 MATRICES = {"ceros": (1, 2), "unos": (1, 2), "identidad": (1, 1), "transpuesta": (1, 1),
             "producto": (2, 2), "punto": (2, 2), "determinante": (1, 1), "inversa": (1, 1),
             "resolver": (2, 2), "forma": (1, 1), "norma": (1, 1)}
-MODELOS = {"regresion": (3, 3), "arbol": (3, 4), "perceptron": (3, 5), "red_neuronal": (3, 7),
+MODELOS = {"regresion": (3, 6), "arbol": (3, 4), "perceptron": (3, 6), "red_neuronal": (3, 7),
            "grupos": (3, 4), "predecir": (2, 2), "reglas": (1, 1),
            "dividir": (1, 3), "error_cuadratico": (2, 2), "r2": (2, 2), "exactitud": (2, 2),
            "correlacion": (2, 2)}

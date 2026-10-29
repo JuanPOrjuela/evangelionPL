@@ -211,11 +211,11 @@ también reciben listas.
 
 | Librería | Funciones |
 |---|---|
-| Matemáticas (`matematica.py`) | `raiz(x)`, `raiz(x, n)`, `exp`, `ln`, `log(x)`, `log(x, base)`, `sen`, `cos`, `tan`, `piso`, `techo`, `factorial`, `redondear`, `absoluto`, y las constantes `pi` y `e` |
+| Matemáticas (`matematica.py`) | `raiz(x)`, `raiz(x, n)`, `exp`, `ln`, `log(x)`, `log(x, base)`, `sen`, `cos`, `tan`, `tanh`, `piso`, `techo`, `factorial`, `redondear`, `absoluto`, y las constantes `pi` y `e` |
 | Métodos numéricos | `biseccion(f, a, b)` y `newton(f, x0)` (raíces de una función), `derivada(f, x)`, `mapear(f, lista o columna)` |
 | Matrices (`matrices.py`) | `ceros`, `unos`, `identidad`, `transpuesta`, `producto`, `punto`, `determinante`, `inversa`, `resolver(A, b)`, `forma`, `norma` |
-| Predicción | `regresion(tabla, variables, objetivo)` (regresión lineal), `arbol(...)` con un objetivo numérico |
-| Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas)`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)` y k vecinos con la etapa `PROFECIA objetivo por [a, b] vecinos k` (alias `pronosticar`) |
+| Predicción | `regresion(tabla, variables, objetivo, tasa, epocas)` (regresión lineal con el algoritmo del cap. 3 de *Grokking ML*), `arbol(...)` con un objetivo numérico |
+| Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas, activacion)` con activación `"escalon"`, `"lineal"`, `"tanh"` o `"sigmoide"`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)` y k vecinos con la etapa `PROFECIA objetivo por [a, b] vecinos k` (alias `pronosticar`) |
 | Agrupamiento | `grupos(tabla, variables, k)` (k-medias) |
 | Evaluación | `predecir(modelo, tabla)`, `dividir(tabla, 0.8)`, `error_cuadratico`, `r2`, `exactitud`, `correlacion` |
 
@@ -226,7 +226,7 @@ mostrar modelo.r2
 resultado = predecir(modelo, partes[1])         # agrega la columna prediccion
 decision = arbol(partes[0], ["energia", "pib"], "nivel", 3)
 mostrar reglas(decision)                        # el árbol escrito como reglas "si ... -> ..."
-neurona = perceptron(partes[0], ["energia", "pib"], "contamina_mucho", 0.5, 300)
+neurona = perceptron(partes[0], ["energia", "pib"], "contamina_mucho", 0.5, 300, "tanh")
 mostrar neurona.perdidas                        # la pérdida de cada época
 agrupados = grupos(datos, ["co2", "energia"], 3)  # agrega la columna grupo
 ```
@@ -333,12 +333,16 @@ escritos a mano. Las matemáticas no usan el módulo `math`: la raíz sale del m
 de Newton, `exp`, `ln`, seno y coseno de series de Taylor, y el azar de un generador
 congruencial con semilla. Las matrices se invierten y los sistemas se resuelven con
 eliminación de Gauss-Jordan, y las raíces de una función con bisección o
-Newton-Raphson. En aprendizaje automático: la regresión lineal sale de las
-ecuaciones normales; el árbol de decisión (CART) prueba cada corte posible y se
-queda con el de menor índice de Gini (o menor varianza si predice un número); el
-perceptrón y la red neuronal se entrenan con descenso de gradiente usando las
-derivadas parciales de la entropía cruzada (en la red, con retropropagación por la
-regla de la cadena); además hay k vecinos y k-medias. Las ideas de estos
+Newton-Raphson. En aprendizaje automático: la regresión lineal usa el algoritmo
+del capítulo 3 de *Grokking ML* (pesos al azar y, en cada época, un punto al azar y
+el "square trick" `w = w + tasa · x · (y − ŷ)`, que es el descenso de gradiente del
+error cuadrático); el árbol de decisión (CART) prueba cada corte posible y se queda
+con el de menor índice de Gini ponderado por el tamaño de cada lado, como en la
+figura 9.14 del libro (o menor varianza si predice un número); el perceptrón calcula
+`y = φ(Σ xᵢwᵢ + θ)` con φ escalón, lineal, tanh o sigmoide: con escalón se entrena con
+el "perceptron trick" y con las otras con descenso de gradiente sobre la función
+costo; la red neuronal usa retropropagación por la regla de la cadena; además hay
+k vecinos y k-medias. Las ideas de estos
 algoritmos siguen los libros *Grokking Machine Learning* (Serrano, caps. 3, 5, 6,
 9, 10 y apéndice B) y *Grokking Artificial Intelligence Algorithms* (Hurbans,
 caps. 8 y 9).
@@ -353,7 +357,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 316 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 326 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco

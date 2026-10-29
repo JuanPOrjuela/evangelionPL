@@ -580,3 +580,58 @@ def test_gini_ponderado_como_en_el_libro():
     assert aprendizaje.gini(derecha) == 0
     ponderado = (6 * aprendizaje.gini(izquierda) + 2 * aprendizaje.gini(derecha)) / 8
     assert ponderado == pytest.approx(0.333, abs=1e-3)
+
+
+# --- Regresion del cap. 3 y perceptron con activaciones (tablero del profe) ---------------------
+
+def test_regresion_square_trick_llega_a_lo_mismo_que_la_formula_exacta():
+    # con ruido, el algoritmo del libro tiene que quedar cerca de la solucion exacta (ecuaciones normales)
+    azar = random.Random(3)
+    xs = [i / 4 for i in range(80)]
+    ys = [3 + 1.5 * x + azar.gauss(0, 0.5) for x in xs]
+    t = Tabla(["x", "y"], {"x": xs, "y": ys})
+    x = [[1, v] for v in xs]
+    xt = matrices.transpuesta(x)
+    exactos = matrices.resolver(matrices.producto(xt, x), matrices.producto(xt, ys))
+    modelo = aprendizaje.regresion(t, "x", "y", 0.01, 20000)
+    assert modelo["coeficientes"] == pytest.approx(exactos, abs=0.15)
+
+
+def test_regresion_la_perdida_baja_y_se_repite():
+    t = Tabla(["x", "y"], {"x": [1, 2, 3, 4, 5, 6], "y": [3, 5, 7, 9, 11, 13]})
+    modelo = aprendizaje.regresion(t, "x", "y", 0.05, 2000)
+    assert modelo["perdidas"][-1] < modelo["perdidas"][0]
+    assert modelo["perdida"] < 1e-6
+    assert aprendizaje.regresion(t, "x", "y", 0.05, 2000)["coeficientes"] == modelo["coeficientes"]
+
+
+def test_regresion_que_se_desborda_avisa():
+    t = Tabla(["x", "y"], {"x": [1, 2, 3, 4], "y": [2, 4, 6, 8]})
+    with pytest.raises(ValueError, match="tasa más pequeña"):
+        aprendizaje.regresion(t, "x", "y", 50, 2000)
+
+
+@pytest.mark.parametrize("activacion", ["sigmoide", "tanh", "lineal", "escalon"])
+def test_perceptron_con_cada_activacion_separa_dos_nubes(activacion):
+    t = Tabla(["a", "b", "c"], {"a": [0, 1, 0, 1, 5, 6, 5, 6], "b": [0, 0, 1, 1, 5, 5, 6, 6],
+                                "c": ["no"] * 4 + ["si"] * 4})
+    modelo = aprendizaje.perceptron(t, ["a", "b"], "c", 0.1, 100, activacion)
+    assert modelo["exactitud"] == 1 and modelo["activacion"] == activacion
+    assert aprendizaje.predecir(modelo, [5.5, 5.5]) == "si"
+    assert aprendizaje.predecir(modelo, [0.5, 0.2]) == "no"
+
+
+def test_perceptron_escalon_deja_de_corregir_cuando_ya_separa():
+    t = Tabla(["x", "c"], {"x": [1, 2, 3, 7, 8, 9], "c": [0, 0, 0, 1, 1, 1]})
+    modelo = aprendizaje.perceptron(t, "x", "c", 0.1, 50, "escalon")
+    assert modelo["perdidas"][-1] == 0
+
+
+def test_activacion_que_no_existe():
+    assert "activación 'relu' no existe" in falla(
+        'x = perceptron(tabla_de({"a": [1, 2, 3], "c": ["x", "y", "x"]}), "a", "c", 0.1, 10, "relu")')
+
+
+def test_tanh_propia():
+    for x in (-25, -2, -0.3, 0, 0.7, 3, 25):
+        assert matematica.tanh(x) == pytest.approx(math.tanh(x), abs=1e-12)

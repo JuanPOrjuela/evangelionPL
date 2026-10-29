@@ -158,6 +158,17 @@ def tan(x):
     return sen(x) / coseno
 
 
+def tanh(x):
+    """Tangente hiperbolica: (e^2x - 1) / (e^2x + 1). Va de -1 a 1.
+    Desde |x| > 20 ya es 1 o -1 con todos los decimales que caben."""
+    if x > 20:
+        return 1.0
+    if x < -20:
+        return -1.0
+    e2x = exp(2 * x)
+    return (e2x - 1) / (e2x + 1)
+
+
 def factorial(n):
     if not es_entero(n) or n < 0:
         raise ValueError("factorial() solo recibe enteros desde 0")

@@ -35,11 +35,23 @@ partes = dividir(co2, 0.8)
 entrenamiento = partes[0]
 prueba = partes[1]
 
-# 1) Prediccion: regresion lineal del CO2 por persona segun la energia y el PIB
-lineal = regresion(entrenamiento, ["energy_per_capita", "pib_por_persona"], "co2_per_capita")
+# 1) Prediccion: regresion lineal del CO2 por persona segun la energia y el PIB.
+# Es el algoritmo del libro (cap. 3): 5000 epocas de "square trick" con tasa 0.01
+lineal = regresion(entrenamiento, ["energy_per_capita", "pib_por_persona"], "co2_per_capita", 0.01, 5000)
 mostrar lineal.coeficientes
 resultado = predecir(lineal, prueba)
 mostrar r2(resultado.co2_per_capita, resultado.prediccion)
+
+# el error cuadratico medio se anota cada lineal.cada epocas
+curva_recta = tabla_de({"medicion": rango(longitud(lineal.perdidas)), "error": lineal.perdidas})
+graficar lineas de curva_recta {
+    eje_x: medicion,
+    eje_y: error,
+    titulo: "Entrenamiento de la regresion lineal",
+    etiqueta_x: "Medicion (cada 25 epocas)",
+    etiqueta_y: "Error cuadratico medio",
+    archivo: "salidas/perdida_regresion.png"
+}
 
 # 2) Clasificacion con un arbol de decision (bajo, medio o alto)
 decision = arbol(entrenamiento, ["energy_per_capita", "pib_por_persona"], "contamina", 3)
@@ -47,11 +59,18 @@ mostrar reglas(decision)
 revision = predecir(decision, prueba)
 mostrar exactitud(revision.contamina, revision.prediccion)
 
-# 3) Clasificacion con un perceptron (descenso de gradiente con derivadas parciales)
+# 3) Clasificacion con un perceptron: y = activacion(x1*w1 + x2*w2 + b).
+# Se prueban las cuatro activaciones; el escalon usa el "perceptron trick" y las
+# otras tres, descenso de gradiente sobre la funcion costo
+para activacion en ["escalon", "lineal", "tanh", "sigmoide"] {
+    prueba_neurona = perceptron(entrenamiento, ["energy_per_capita", "pib_por_persona"],
+                                "contamina_mucho", 0.5, 300, activacion)
+    revision = predecir(prueba_neurona, prueba)
+    mostrar activacion + ": " + texto(redondear(exactitud(revision.contamina_mucho, revision.prediccion), 3))
+}
+
 neurona = perceptron(entrenamiento, ["energy_per_capita", "pib_por_persona"], "contamina_mucho", 0.5, 300)
 mostrar neurona.pesos
-revision = predecir(neurona, prueba)
-mostrar exactitud(revision.contamina_mucho, revision.prediccion)
 
 # la perdida de cada epoca, para ver que el gradiente si la hizo bajar
 curva = tabla_de({"epoca": rango(300), "perdida": neurona.perdidas})

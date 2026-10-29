@@ -16,7 +16,7 @@ modelo.coeficientes o modelo["r2"].
 """
 
 from . import matrices
-from .matematica import Aleatorio, exp, ln, raiz
+from .matematica import Aleatorio, exp, ln, raiz, tanh
 from .tablas import Columna, Tabla, es_numero
 
 MAX_VUELTAS = 100
@@ -67,24 +67,54 @@ def _escalar(puntos: list, medias: list, desviaciones: list) -> list:
 
 # --- Regresion lineal ------------------------------------------------------------
 
-def regresion(tabla: Tabla, variables, objetivo: str) -> dict:
-    """y = b0 + b1*x1 + b2*x2 + ...  Los coeficientes salen de las ecuaciones normales
-    (X^T X) b = X^T y, que se resuelven con eliminacion de Gauss."""
+def regresion(tabla: Tabla, variables, objetivo: str, tasa: float = 0.01, epocas: int = 5000,
+              semilla: int = 42) -> dict:
+    """y = b + w1*x1 + w2*x2 + ...  con el algoritmo de Grokking Machine Learning, cap. 3:
+    se empieza con pesos al azar y en cada epoca se escoge un punto al azar y se mueve
+    la recta hacia el con el "square trick":
+        w_j = w_j + tasa * x_j * (y - y_predicho)
+        b   = b   + tasa * (y - y_predicho)
+    Ese paso es el descenso de gradiente del error cuadratico (y - y_predicho)^2 / 2.
+    Las variables se escalan por dentro para que una tasa sirva con cualquier unidad, y
+    al final los coeficientes se devuelven en las unidades originales."""
     variables = _lista_de_variables(variables)
     _revisar_columnas(tabla, variables + [objetivo])
+    _revisar_entrenamiento(tasa, epocas)
     if len(tabla) <= len(variables):
         raise ValueError(f"para {len(variables)} variables hacen falta más de {len(variables)} filas")
-    x = [[1] + p for p in _puntos(tabla, variables)]  # el 1 es para el intercepto b0
-    y = tabla[objetivo].valores
-    xt = matrices.transpuesta(x)
+    puntos = _puntos(tabla, variables)
+    medias, desviaciones = _escala(puntos)
+    x = _escalar(puntos, medias, desviaciones)
+    y = list(tabla[objetivo].valores)
+    n, d = len(x), len(variables)
+
+    azar = Aleatorio(semilla)
+    pesos = [azar.siguiente() - 0.5 for _ in range(d)]
+    sesgo = azar.siguiente() - 0.5
+    cada = max(1, epocas // 200)    # cada cuantas epocas se anota el error
+    perdidas = []
     try:
-        coeficientes = matrices.resolver(matrices.producto(xt, x), matrices.producto(xt, y))
-    except ValueError:
-        raise ValueError("no se pudo ajustar la regresión: alguna variable es constante "
-                         "o es una copia de otra")
-    predichos = [matrices.punto(fila, coeficientes) for fila in x]
+        for epoca in range(epocas):
+            i = azar.entero(0, n - 1)
+            diferencia = y[i] - (matrices.punto(pesos, x[i]) + sesgo)
+            for j in range(d):
+                pesos[j] += tasa * x[i][j] * diferencia
+            sesgo += tasa * diferencia
+            if epoca % cada == 0 or epoca == epocas - 1:
+                perdidas.append(sum((yi - matrices.punto(pesos, xi) - sesgo) ** 2
+                                    for xi, yi in zip(x, y)) / n)
+    except OverflowError:
+        raise ValueError("el entrenamiento se desbordó (los pesos crecieron sin control); "
+                         "prueba con una tasa más pequeña")
+
+    # de vuelta a las unidades originales: w_j / desviacion_j y el intercepto se corre
+    originales = [w / s for w, s in zip(pesos, desviaciones)]
+    intercepto = sesgo - sum(w * m for w, m in zip(originales, medias))
+    coeficientes = [intercepto] + originales
+    predichos = [matrices.punto([1] + p, coeficientes) for p in puntos]
     return {"tipo": "regresion", "variables": variables, "objetivo": objetivo,
-            "coeficientes": coeficientes, "r2": r2(y, predichos)}
+            "coeficientes": coeficientes, "r2": r2(y, predichos), "tasa": tasa, "epocas": epocas,
+            "perdidas": perdidas, "perdida": perdidas[-1], "cada": cada}
 
 
 # --- Prediccion ----------------------------------------------------------------------
@@ -118,8 +148,9 @@ def _predecir_uno(modelo: dict, punto: list):
         return _bajar_por_el_arbol(modelo["raiz"], dict(zip(modelo["variables"], punto)))
     escalado = _escalar([punto], modelo["medias"], modelo["desviaciones"])[0]
     if modelo["tipo"] == "perceptron":
-        probabilidad = sigmoide(matrices.punto(modelo["pesos"], escalado) + modelo["sesgo"])
-        return modelo["clases"][1] if probabilidad >= 0.5 else modelo["clases"][0]
+        activacion = modelo["activacion"]
+        salida = _activar(activacion, matrices.punto(modelo["pesos"], escalado) + modelo["sesgo"])
+        return modelo["clases"][1] if salida >= _corte(activacion) else modelo["clases"][0]
     salida = _adelante(modelo, escalado)[1]
     return modelo["clases"][max(range(len(salida)), key=lambda c: salida[c])]
 
@@ -375,15 +406,41 @@ def _entropia(p: float, real: int) -> float:
     return -ln(p) if real == 1 else -ln(1 - p)
 
 
-def perceptron(tabla: Tabla, variables, objetivo: str, tasa: float = 0.1, epocas: int = 500) -> dict:
-    """Una neurona: p = sigmoide(w . x + b). La perdida es la entropia cruzada
-    L = -[y ln(p) + (1 - y) ln(1 - p)] y sus derivadas parciales son
-    dL/dw_j = (p - y) * x_j  y  dL/db = (p - y). En cada epoca se promedian sobre
-    todas las filas y se da un paso en contra del gradiente: w_j = w_j - tasa * dL/dw_j."""
+ACTIVACIONES = ("sigmoide", "tanh", "lineal", "escalon")
+
+
+def _activar(activacion: str, z: float) -> float:
+    if activacion == "sigmoide":
+        return sigmoide(z)
+    if activacion == "tanh":
+        return tanh(z)
+    if activacion == "lineal":
+        return z
+    return 1 if z >= 0 else 0    # escalon: se activa cuando la suma llega al umbral
+
+
+def _corte(activacion: str) -> float:
+    """Desde que valor de la salida se dice que es la segunda clase."""
+    return 0 if activacion == "tanh" else 0.5    # tanh sale entre -1 y 1; las otras entre 0 y 1
+
+
+def perceptron(tabla: Tabla, variables, objetivo: str, tasa: float = 0.1, epocas: int = 500,
+               activacion: str = "sigmoide") -> dict:
+    """Una neurona: salida = activacion(w1*x1 + w2*x2 + ... + b), donde b hace de umbral.
+
+    Con sigmoide, tanh o lineal se entrena con descenso de gradiente sobre la funcion
+    costo, promediando sobre todas las filas en cada epoca: w_j = w_j - tasa * dC/dw_j.
+      sigmoide: costo entropia cruzada, dC/dw_j = (p - y) * x_j            (clases 0 y 1)
+      tanh:     costo (a - y)^2 / 2,    dC/dw_j = (a - y) * (1 - a^2) * x_j (clases -1 y 1)
+      lineal:   costo (z - y)^2 / 2,    dC/dw_j = (z - y) * x_j            (clases 0 y 1)
+    El escalon no tiene derivada (es plano), asi que usa el "perceptron trick" de
+    Grokking ML cap. 5: fila por fila, si se equivoca, w_j = w_j + tasa * (y - y_predicho) * x_j."""
     variables = _lista_de_variables(variables)
     _revisar_columnas(tabla, variables)
     _revisar_columnas(tabla, [objetivo], numericas=False)
     _revisar_entrenamiento(tasa, epocas)
+    if activacion not in ACTIVACIONES:
+        raise ValueError(f"la activación '{activacion}' no existe; usa {', '.join(ACTIVACIONES)}")
     etiquetas = list(tabla[objetivo].valores)
     clases = sorted(set(etiquetas), key=str)
     if len(clases) != 2:
@@ -392,26 +449,44 @@ def perceptron(tabla: Tabla, variables, objetivo: str, tasa: float = 0.1, epocas
     puntos = _puntos(tabla, variables)
     medias, desviaciones = _escala(puntos)
     x = _escalar(puntos, medias, desviaciones)
-    y = [1 if e == clases[1] else 0 for e in etiquetas]
+    baja = -1 if activacion == "tanh" else 0    # tanh va de -1 a 1
+    y = [1 if e == clases[1] else baja for e in etiquetas]
     n, d = len(x), len(variables)
 
+    azar = Aleatorio(42)
     pesos, sesgo, perdidas = [0.0] * d, 0.0, []
     for _ in range(epocas):
+        if activacion == "escalon":
+            errores = 0
+            for i in azar.barajar(range(n)):
+                diferencia = y[i] - _activar("escalon", matrices.punto(pesos, x[i]) + sesgo)
+                if diferencia != 0:
+                    errores += 1
+                    pesos = [w + tasa * diferencia * xj for w, xj in zip(pesos, x[i])]
+                    sesgo += tasa * diferencia
+            perdidas.append(errores / n)    # que fraccion de filas tuvo que corregir
+            continue
         gradiente, gradiente_sesgo, perdida = [0.0] * d, 0.0, 0.0
         for fila, real in zip(x, y):
-            p = sigmoide(matrices.punto(pesos, fila) + sesgo)
-            error = p - real
+            salida = _activar(activacion, matrices.punto(pesos, fila) + sesgo)
+            if activacion == "sigmoide":
+                error = salida - real
+                perdida += _entropia(salida, real)
+            else:
+                derivada = 1 - salida ** 2 if activacion == "tanh" else 1
+                error = (salida - real) * derivada
+                perdida += (salida - real) ** 2 / 2
             for j in range(d):
                 gradiente[j] += error * fila[j]
             gradiente_sesgo += error
-            perdida += _entropia(p, real)
         pesos = [w - tasa * g / n for w, g in zip(pesos, gradiente)]
         sesgo -= tasa * gradiente_sesgo / n
         perdidas.append(perdida / n)
 
-    modelo = {"tipo": "perceptron", "variables": variables, "objetivo": objetivo, "clases": clases,
-              "pesos": pesos, "sesgo": sesgo, "medias": medias, "desviaciones": desviaciones,
-              "perdidas": perdidas, "perdida": perdidas[-1]}
+    modelo = {"tipo": "perceptron", "activacion": activacion, "variables": variables,
+              "objetivo": objetivo, "clases": clases, "pesos": pesos, "sesgo": sesgo,
+              "medias": medias, "desviaciones": desviaciones, "perdidas": perdidas,
+              "perdida": perdidas[-1]}
     modelo["exactitud"] = exactitud(etiquetas, [_predecir_uno(modelo, p) for p in puntos])
     return modelo
 
