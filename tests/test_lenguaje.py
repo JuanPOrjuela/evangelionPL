@@ -570,3 +570,13 @@ def test_profecia_en_empate_gana_el_vecino_mas_cercano():
     t = v('t = tabla_de({"x": [0, 8, 10, 11], "c": ["a", "a", "z", "b"]})\n'
           "r = t |> PROFECIA c por [x] vecinos 2")
     assert t["c_prediccion"].valores[2] == "b"
+
+
+def test_gini_ponderado_como_en_el_libro():
+    # Grokking Machine Learning, cap. 9, figura 9.14: 8 puntos se parten en 6 y 2.
+    # Gini de la izquierda = 0.444, de la derecha = 0 y ponderado = 0.444*6/8 + 0*2/8 = 0.333
+    izquierda, derecha = ["negro"] * 4 + ["blanco"] * 2, ["negro"] * 2
+    assert aprendizaje.gini(izquierda) == pytest.approx(0.444, abs=1e-3)
+    assert aprendizaje.gini(derecha) == 0
+    ponderado = (6 * aprendizaje.gini(izquierda) + 2 * aprendizaje.gini(derecha)) / 8
+    assert ponderado == pytest.approx(0.333, abs=1e-3)
