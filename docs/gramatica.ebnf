@@ -1,36 +1,46 @@
 (* Gramatica de evangelionPL en EBNF.
-   { x } = cero o mas veces, [ x ] = opcional, | = alternativa *)
+   { x } = cero o mas veces, [ x ] = opcional, | = alternativa.
+   Cada instruccion tiene dos nombres que valen igual: el de Evangelion y uno en
+   espanol, por ejemplo "MONITOR" | "mostrar". Aqui se escribe "MONITOR" / "mostrar". *)
 
 programa       = [ cabecera ] , { sentencia } ;
-cabecera       = "NERV" , CADENA ;
+cabecera       = "NERV" / "programa" , CADENA ;
 
-sentencia      = asignacion | mostrar | guardar | graficar | condicional ;
-asignacion     = nombre , "=" , flujo ;
-mostrar        = "MONITOR" , flujo ;
-guardar        = "SEELE" , flujo , "como" , CADENA ;
-graficar       = "HOLOGRAM" , ID , "de" , flujo , [ "{" , { opcion } , "}" ] ;
-condicional    = "PATTERN_BLUE" , expresion , bloque , [ "PATTERN_ORANGE" , bloque ] ;
+sentencia      = asignacion | mostrar | guardar | graficar | condicional
+               | mientras | para | funcion | retornar | llamada ;
+asignacion     = nombre , { "[" , expresion , "]" } , "=" , flujo ;
+mostrar        = "MONITOR" / "mostrar" , flujo ;
+guardar        = "SEELE" / "guardar" , flujo , "como" , CADENA ;
+graficar       = "HOLOGRAM" / "graficar" , ID , "de" , flujo , [ "{" , { opcion } , "}" ] ;
+condicional    = "PATTERN_BLUE" / "si" , expresion , bloque ,
+                 [ "PATTERN_ORANGE" / "sino" , ( condicional | bloque ) ] ;
+mientras       = "mientras" , expresion , bloque ;
+para           = "para" , nombre , ( "en" , expresion | "desde" , expresion , "hasta" , expresion ) , bloque ;
+funcion        = "funcion" , ID , "(" , [ nombre , { "," , nombre } ] , ")" , bloque ;
+retornar       = "retornar" , flujo ;
+llamada        = ID , "(" , [ expresion , { "," , expresion } ] , ")" ;
 bloque         = "{" , { sentencia } , "}" ;
 
 flujo          = fuente , { "|>" , etapa } ;
 fuente         = carga | expresion ;
-carga          = "ENTRY_PLUG" , CADENA , [ "con" , "{" , { opcion } , "}" ] ;
+carga          = "ENTRY_PLUG" / "cargar" , CADENA , [ "con" , "{" , { opcion } , "}" ] ;
 opcion         = ID , ":" , expresion , [ "," ] ;
 
-etapa          = "TARGET" , lista_columnas
-               | "AT_FIELD" , "donde" , expresion
-               | "SYNC" , columna_nueva , { "," , columna_nueva }
-               | "CODENAME" , "[" , renombre , { "," , renombre } , "]"
-               | "FORMATION" , "por" , "[" , criterio , { "," , criterio } , "]"
-               | "EJECT" , "duplicados" , [ lista_columnas ]
-               | "EJECT" , "faltantes" , [ lista_columnas ]
-               | "EJECT" , "columnas" , lista_columnas
-               | "DUMMY_PLUG" , columna_nueva , { "," , columna_nueva }
-               | "EQUIP" , nombre , "->" , ID
-               | "SQUAD" , "por" , lista_columnas
-               | "MAGI" , agregacion , { "," , agregacion }
-               | "BATTERY" , ENTERO
-               | "DIAGNOSTIC" ;
+etapa          = "TARGET" / "seleccionar" , lista_columnas
+               | "AT_FIELD" / "filtrar" , "donde" , expresion
+               | "SYNC" / "crear" , columna_nueva , { "," , columna_nueva }
+               | "CODENAME" / "renombrar" , "[" , renombre , { "," , renombre } , "]"
+               | "FORMATION" / "ordenar" , "por" , "[" , criterio , { "," , criterio } , "]"
+               | "EJECT" / "quitar" , "duplicados" , [ lista_columnas ]
+               | "EJECT" / "quitar" , "faltantes" , [ lista_columnas ]
+               | "EJECT" / "quitar" , "columnas" , lista_columnas
+               | "DUMMY_PLUG" / "rellenar" , columna_nueva , { "," , columna_nueva }
+               | "EQUIP" / "convertir" , nombre , "->" , ID
+               | "SQUAD" / "agrupar" , "por" , lista_columnas
+               | "MAGI" / "resumir" , agregacion , { "," , agregacion }
+               | "BATTERY" / "limitar" , ENTERO
+               | "DIAGNOSTIC" / "diagnosticar"
+               | "PROFECIA" / "pronosticar" , nombre , "por" , lista_columnas , "vecinos" , ENTERO ;
 
 columna_nueva  = nombre , "=" , expresion ;
 agregacion     = nombre , "=" , ID , "(" , [ nombre ] , ")" ;
@@ -48,12 +58,16 @@ comparacion    = suma , { ( "<" | "<=" | ">" | ">=" ) , suma } ;
 suma           = termino , { ( "+" | "-" ) , termino } ;
 termino        = unario , { ( "*" | "/" | "%" ) , unario } ;
 unario         = "-" , unario | potencia ;
-potencia       = primario , [ "^" , unario ] ;
+potencia       = indexado , [ "^" , unario ] ;
+indexado       = primario , { "[" , expresion , "]" } ;
 primario       = literal
                | nombre
                | nombre , "." , nombre
                | ID , "(" , [ expresion , { "," , expresion } ] , ")"
+               | "[" , [ expresion , { "," , expresion } , [ "," ] ] , "]"
+               | "{" , [ par , { "," , par } , [ "," ] ] , "}"
                | "(" , expresion , ")" ;
+par            = ( CADENA | nombre ) , ":" , expresion ;
 
 literal        = ENTERO | REAL | CADENA | "verdadero" | "falso" | "nulo" ;
 nombre         = ID | ID_ESCAPADO ;
