@@ -77,11 +77,10 @@ generados en `src/evangelion/generado/`.
 Desde la carpeta del proyecto:
 
 ```
-eva ejemplos\01_primera_prueba.eva
+python run.py ejemplos/01_primera_prueba.eva
 ```
 
-o, que es lo mismo, `python run.py ejemplos/01_primera_prueba.eva`. En Linux:
-`./eva.sh ejemplos/01_primera_prueba.eva`.
+El mismo comando sirve en Windows y en Linux (en Linux puede ser `python3`).
 
 | Opción | Qué muestra |
 |---|---|
@@ -287,7 +286,7 @@ Adler-32, y una letra de píxeles de 5 x 7 dibujada a mano en `fuente.py`.
 Con `--arbol` sale en la terminal y con `--svg` queda como dibujo:
 
 ```
-eva --svg arbol.svg --solo-analisis ejemplos\01_primera_prueba.eva
+python run.py ejemplos/01_primera_prueba.eva --svg arbol.svg --solo-analisis
 ```
 
 ## Estructura
