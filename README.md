@@ -211,7 +211,7 @@ también reciben listas.
 | Librería | Funciones |
 |---|---|
 | Matemáticas (`matematica.py`) | `raiz(x)`, `raiz(x, n)`, `exp`, `ln`, `log(x)`, `log(x, base)`, `sen`, `cos`, `tan`, `tanh`, `piso`, `techo`, `factorial`, `redondear`, `absoluto`, y las constantes `pi` y `e` |
-| Métodos numéricos | `biseccion(f, a, b)` y `newton(f, x0)` (raíces de una función), `derivada(f, x)`, `mapear(f, lista o columna)` |
+| Métodos numéricos | `biseccion(f, a, b)` y `newton(f, x0)` (raíces de una función), `derivada(f, x)`, `mapear(f, lista o columna)`, `filtrar(f, lista, columna o tabla)` |
 | Matrices (`matrices.py`) | `ceros`, `unos`, `identidad`, `transpuesta`, `producto`, `punto`, `determinante`, `inversa`, `resolver(A, b)`, `forma`, `norma` |
 | Predicción | `regresion(tabla, variables, objetivo, tasa, epocas)` (regresión lineal con el algoritmo del cap. 3 de *Grokking ML*), `arbol(...)` con un objetivo numérico |
 | Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas, activacion)` con activación `"escalon"`, `"lineal"`, `"tanh"` o `"sigmoide"`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)` y k vecinos con la etapa `PROFECIA objetivo por [a, b] vecinos k` (alias `pronosticar`) |
@@ -241,6 +241,15 @@ datos = datos |> crear nivel = mapear(nivel, co2_per_capita)
 
 funcion f(x) { retornar x ^ 2 - 2 }
 mostrar biseccion(f, 0, 2)      # raíz de f entre 0 y 2: 1.4142...
+```
+
+`filtrar` tiene dos formas: como etapa de una tabla (`tabla |> filtrar donde x > 3`) y
+como función, que recibe otra función y deja los elementos con los que da verdadero:
+
+```
+funcion es_par(x) { retornar x % 2 == 0 }
+mostrar filtrar(es_par, [1, 2, 3, 4])                  # [2, 4]
+mostrar suma(mapear(doble, filtrar(es_par, numeros)))  # se pueden encadenar
 ```
 
 Una función recibe parámetros, puede devolver cualquier valor (también una
@@ -356,7 +365,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 326 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 334 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco

@@ -925,6 +925,27 @@ class Interprete(EvaVisitor):
                                       "va sola en su línea.")
         return self._llamada(ctx)
 
+    def visitExprFiltrar(self, ctx):
+        """filtrar(f, lista) deja los elementos con los que f da verdadero.
+        Con una tabla, cada fila llega a f como un diccionario."""
+        args = [self.visit(e) for e in ctx.expresion()]
+        if len(args) != 2 or not isinstance(args[0], Funcion) or not isinstance(args[1], (list, Columna, Tabla)):
+            raise ErrorSemantico(ctx, "va así: filtrar(funcion, lista) o filtrar(funcion, tabla). "
+                                      "Para filtrar una tabla con una condición: tabla |> filtrar donde ...")
+
+        def cumple(elemento):
+            resultado = self._invocar(ctx, args[0], [elemento])
+            if not isinstance(resultado, bool):
+                raise ErrorSemantico(ctx, f"{args[0].nombre}() tiene que devolver verdadero o falso para "
+                                          f"filtrar, y devolvió {describir(resultado)}.")
+            return resultado
+
+        if isinstance(args[1], Tabla):
+            return args[1].filtrar(Columna([cumple(fila) for fila in args[1].registros()]))
+        if isinstance(args[1], Columna):
+            return [v for v in args[1].valores if v is not None and cumple(v)]
+        return [v for v in args[1] if cumple(v)]
+
     def _llamada(self, ctx):
         nombre = ctx.ID().getText()
         args = [self.visit(e) for e in ctx.expresion()]

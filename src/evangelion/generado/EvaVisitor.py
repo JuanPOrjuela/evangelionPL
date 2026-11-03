@@ -214,6 +214,11 @@ class EvaVisitor(ParseTreeVisitor):
         return self.visitChildren(ctx)
 
 
+    # Visit a parse tree produced by EvaParser#exprFiltrar.
+    def visitExprFiltrar(self, ctx:EvaParser.ExprFiltrarContext):
+        return self.visitChildren(ctx)
+
+
     # Visit a parse tree produced by EvaParser#exprAditiva.
     def visitExprAditiva(self, ctx:EvaParser.ExprAditivaContext):
         return self.visitChildren(ctx)

@@ -635,3 +635,47 @@ def test_activacion_que_no_existe():
 def test_tanh_propia():
     for x in (-25, -2, -0.3, 0, 0.7, 3, 25):
         assert matematica.tanh(x) == pytest.approx(math.tanh(x), abs=1e-12)
+
+
+# --- filtrar como funcion, al programar en estilo funcional ---------------------------------------
+
+ES_PAR = "funcion es_par(x) { retornar x % 2 == 0 }\n"
+
+
+def test_filtrar_una_lista():
+    assert v(ES_PAR + "r = filtrar(es_par, [1, 2, 3, 4])") == [2, 4]
+    assert v(ES_PAR + "r = filtrar(es_par, [1, 3])") == []
+
+
+def test_filtrar_no_cambia_la_lista_original():
+    i = correr(ES_PAR + "x = [1, 2]\nr = filtrar(es_par, x)")
+    assert valor(i, "x") == [1, 2] and valor(i, "r") == [2]
+
+
+def test_filtrar_se_combina_con_mapear_y_suma():
+    assert v(ES_PAR + "funcion doble(x) { retornar x * 2 }\n"
+                      "r = suma(mapear(doble, filtrar(es_par, rango(6))))") == 24
+
+
+def test_filtrar_tambien_con_su_nombre_de_evangelion():
+    assert v(ES_PAR + "r = AT_FIELD(es_par, [1, 2])") == [2]
+
+
+def test_filtrar_una_tabla_recibe_cada_fila(datos):
+    t = v(CARGA + '\nfuncion de_shinji(fila) { retornar fila["piloto"] == "Shinji" }\nr = filtrar(de_shinji, t)')
+    assert len(t) == 2 and t.columnas == valor(correr(CARGA), "t").columnas
+
+
+def test_filtrar_una_columna_da_lista_sin_faltantes(datos):
+    assert v(CARGA + "\nfuncion alta(s) { retornar s >= 80 }\nr = filtrar(alta, t.sincronizacion)") == [80, 90]
+
+
+def test_la_etapa_filtrar_sigue_funcionando(datos):
+    assert len(v(CARGA + "\nr = t |> filtrar donde sincronizacion >= 80")) == 2
+
+
+def test_errores_de_filtrar():
+    assert "tiene que devolver verdadero o falso" in falla("funcion f(x) { retornar x }\nz = filtrar(f, [1])")
+    assert "va así" in falla("z = filtrar(5, [1])")
+    assert "va así" in falla("funcion f(x) { retornar verdadero }\nz = filtrar(f)")
+    assert "palabra reservada" in analizar("filtrar = 1").errores[0].mensaje

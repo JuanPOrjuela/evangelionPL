@@ -10,7 +10,7 @@ else:
 
 def serializedATN():
     return [
-        4,1,77,445,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,
+        4,1,77,458,2,0,7,0,2,1,7,1,2,2,7,2,2,3,7,3,2,4,7,4,2,5,7,5,2,6,7,
         6,2,7,7,7,2,8,7,8,2,9,7,9,2,10,7,10,2,11,7,11,2,12,7,12,2,13,7,13,
         2,14,7,14,2,15,7,15,2,16,7,16,2,17,7,17,2,18,7,18,2,19,7,19,2,20,
         7,20,2,21,7,21,2,22,7,22,2,23,7,23,2,24,7,24,2,25,7,25,2,26,7,26,
@@ -40,41 +40,42 @@ def serializedATN():
         330,8,23,1,24,1,24,1,24,1,24,5,24,336,8,24,10,24,12,24,339,9,24,
         1,24,1,24,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,5,25,
         353,8,25,10,25,12,25,356,9,25,3,25,358,8,25,1,25,1,25,1,25,1,25,
-        1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,5,25,373,8,25,10,25,
-        12,25,376,9,25,1,25,3,25,379,8,25,3,25,381,8,25,1,25,1,25,1,25,1,
-        25,1,25,5,25,388,8,25,10,25,12,25,391,9,25,1,25,3,25,394,8,25,3,
-        25,396,8,25,1,25,1,25,1,25,3,25,401,8,25,1,25,1,25,1,25,1,25,1,25,
+        1,25,1,25,5,25,366,8,25,10,25,12,25,369,9,25,3,25,371,8,25,1,25,
+        1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,5,25,
+        386,8,25,10,25,12,25,389,9,25,1,25,3,25,392,8,25,3,25,394,8,25,1,
+        25,1,25,1,25,1,25,1,25,5,25,401,8,25,10,25,12,25,404,9,25,1,25,3,
+        25,407,8,25,3,25,409,8,25,1,25,1,25,1,25,3,25,414,8,25,1,25,1,25,
         1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,
-        1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,5,25,429,8,25,10,25,12,25,
-        432,9,25,1,26,1,26,3,26,436,8,26,1,26,1,26,1,26,1,27,1,27,1,28,1,
-        28,1,28,0,1,50,29,0,2,4,6,8,10,12,14,16,18,20,22,24,26,28,30,32,
-        34,36,38,40,42,44,46,48,50,52,54,56,0,7,1,0,33,34,1,0,56,58,1,0,
-        54,55,1,0,49,52,1,0,47,48,2,0,42,44,69,71,1,0,73,74,491,0,59,1,0,
-        0,0,2,69,1,0,0,0,4,82,1,0,0,0,6,84,1,0,0,0,8,94,1,0,0,0,10,98,1,
-        0,0,0,12,101,1,0,0,0,14,106,1,0,0,0,16,120,1,0,0,0,18,130,1,0,0,
-        0,20,134,1,0,0,0,22,147,1,0,0,0,24,163,1,0,0,0,26,166,1,0,0,0,28,
-        180,1,0,0,0,30,189,1,0,0,0,32,199,1,0,0,0,34,201,1,0,0,0,36,214,
-        1,0,0,0,38,308,1,0,0,0,40,310,1,0,0,0,42,314,1,0,0,0,44,323,1,0,
-        0,0,46,327,1,0,0,0,48,331,1,0,0,0,50,400,1,0,0,0,52,435,1,0,0,0,
-        54,440,1,0,0,0,56,442,1,0,0,0,58,60,3,2,1,0,59,58,1,0,0,0,59,60,
-        1,0,0,0,60,64,1,0,0,0,61,63,3,4,2,0,62,61,1,0,0,0,63,66,1,0,0,0,
-        64,62,1,0,0,0,64,65,1,0,0,0,65,67,1,0,0,0,66,64,1,0,0,0,67,68,5,
-        0,0,1,68,1,1,0,0,0,69,70,5,1,0,0,70,71,5,71,0,0,71,3,1,0,0,0,72,
-        83,3,6,3,0,73,83,3,10,5,0,74,83,3,12,6,0,75,83,3,14,7,0,76,83,3,
-        16,8,0,77,83,3,18,9,0,78,83,3,20,10,0,79,83,3,22,11,0,80,83,3,24,
-        12,0,81,83,3,26,13,0,82,72,1,0,0,0,82,73,1,0,0,0,82,74,1,0,0,0,82,
-        75,1,0,0,0,82,76,1,0,0,0,82,77,1,0,0,0,82,78,1,0,0,0,82,79,1,0,0,
-        0,82,80,1,0,0,0,82,81,1,0,0,0,83,5,1,0,0,0,84,88,3,56,28,0,85,87,
-        3,8,4,0,86,85,1,0,0,0,87,90,1,0,0,0,88,86,1,0,0,0,88,89,1,0,0,0,
-        89,91,1,0,0,0,90,88,1,0,0,0,91,92,5,53,0,0,92,93,3,30,15,0,93,7,
-        1,0,0,0,94,95,5,62,0,0,95,96,3,50,25,0,96,97,5,63,0,0,97,9,1,0,0,
-        0,98,99,5,3,0,0,99,100,3,30,15,0,100,11,1,0,0,0,101,102,5,4,0,0,
-        102,103,3,30,15,0,103,104,5,30,0,0,104,105,5,71,0,0,105,13,1,0,0,
-        0,106,107,5,5,0,0,107,108,5,73,0,0,108,109,5,32,0,0,109,118,3,30,
-        15,0,110,114,5,64,0,0,111,113,3,36,18,0,112,111,1,0,0,0,113,116,
-        1,0,0,0,114,112,1,0,0,0,114,115,1,0,0,0,115,117,1,0,0,0,116,114,
-        1,0,0,0,117,119,5,65,0,0,118,110,1,0,0,0,118,119,1,0,0,0,119,15,
-        1,0,0,0,120,121,5,6,0,0,121,122,3,50,25,0,122,128,3,28,14,0,123,
+        1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,1,25,5,25,442,
+        8,25,10,25,12,25,445,9,25,1,26,1,26,3,26,449,8,26,1,26,1,26,1,26,
+        1,27,1,27,1,28,1,28,1,28,0,1,50,29,0,2,4,6,8,10,12,14,16,18,20,22,
+        24,26,28,30,32,34,36,38,40,42,44,46,48,50,52,54,56,0,7,1,0,33,34,
+        1,0,56,58,1,0,54,55,1,0,49,52,1,0,47,48,2,0,42,44,69,71,1,0,73,74,
+        507,0,59,1,0,0,0,2,69,1,0,0,0,4,82,1,0,0,0,6,84,1,0,0,0,8,94,1,0,
+        0,0,10,98,1,0,0,0,12,101,1,0,0,0,14,106,1,0,0,0,16,120,1,0,0,0,18,
+        130,1,0,0,0,20,134,1,0,0,0,22,147,1,0,0,0,24,163,1,0,0,0,26,166,
+        1,0,0,0,28,180,1,0,0,0,30,189,1,0,0,0,32,199,1,0,0,0,34,201,1,0,
+        0,0,36,214,1,0,0,0,38,308,1,0,0,0,40,310,1,0,0,0,42,314,1,0,0,0,
+        44,323,1,0,0,0,46,327,1,0,0,0,48,331,1,0,0,0,50,413,1,0,0,0,52,448,
+        1,0,0,0,54,453,1,0,0,0,56,455,1,0,0,0,58,60,3,2,1,0,59,58,1,0,0,
+        0,59,60,1,0,0,0,60,64,1,0,0,0,61,63,3,4,2,0,62,61,1,0,0,0,63,66,
+        1,0,0,0,64,62,1,0,0,0,64,65,1,0,0,0,65,67,1,0,0,0,66,64,1,0,0,0,
+        67,68,5,0,0,1,68,1,1,0,0,0,69,70,5,1,0,0,70,71,5,71,0,0,71,3,1,0,
+        0,0,72,83,3,6,3,0,73,83,3,10,5,0,74,83,3,12,6,0,75,83,3,14,7,0,76,
+        83,3,16,8,0,77,83,3,18,9,0,78,83,3,20,10,0,79,83,3,22,11,0,80,83,
+        3,24,12,0,81,83,3,26,13,0,82,72,1,0,0,0,82,73,1,0,0,0,82,74,1,0,
+        0,0,82,75,1,0,0,0,82,76,1,0,0,0,82,77,1,0,0,0,82,78,1,0,0,0,82,79,
+        1,0,0,0,82,80,1,0,0,0,82,81,1,0,0,0,83,5,1,0,0,0,84,88,3,56,28,0,
+        85,87,3,8,4,0,86,85,1,0,0,0,87,90,1,0,0,0,88,86,1,0,0,0,88,89,1,
+        0,0,0,89,91,1,0,0,0,90,88,1,0,0,0,91,92,5,53,0,0,92,93,3,30,15,0,
+        93,7,1,0,0,0,94,95,5,62,0,0,95,96,3,50,25,0,96,97,5,63,0,0,97,9,
+        1,0,0,0,98,99,5,3,0,0,99,100,3,30,15,0,100,11,1,0,0,0,101,102,5,
+        4,0,0,102,103,3,30,15,0,103,104,5,30,0,0,104,105,5,71,0,0,105,13,
+        1,0,0,0,106,107,5,5,0,0,107,108,5,73,0,0,108,109,5,32,0,0,109,118,
+        3,30,15,0,110,114,5,64,0,0,111,113,3,36,18,0,112,111,1,0,0,0,113,
+        116,1,0,0,0,114,112,1,0,0,0,114,115,1,0,0,0,115,117,1,0,0,0,116,
+        114,1,0,0,0,117,119,5,65,0,0,118,110,1,0,0,0,118,119,1,0,0,0,119,
+        15,1,0,0,0,120,121,5,6,0,0,121,122,3,50,25,0,122,128,3,28,14,0,123,
         126,5,7,0,0,124,127,3,16,8,0,125,127,3,28,14,0,126,124,1,0,0,0,126,
         125,1,0,0,0,127,129,1,0,0,0,128,123,1,0,0,0,128,129,1,0,0,0,129,
         17,1,0,0,0,130,131,5,23,0,0,131,132,3,50,25,0,132,133,3,28,14,0,
@@ -141,41 +142,45 @@ def serializedATN():
         5,66,0,0,334,336,3,56,28,0,335,333,1,0,0,0,336,339,1,0,0,0,337,335,
         1,0,0,0,337,338,1,0,0,0,338,340,1,0,0,0,339,337,1,0,0,0,340,341,
         5,63,0,0,341,49,1,0,0,0,342,343,6,25,-1,0,343,344,5,60,0,0,344,345,
-        3,50,25,0,345,346,5,61,0,0,346,401,1,0,0,0,347,348,5,73,0,0,348,
+        3,50,25,0,345,346,5,61,0,0,346,414,1,0,0,0,347,348,5,73,0,0,348,
         357,5,60,0,0,349,354,3,50,25,0,350,351,5,66,0,0,351,353,3,50,25,
         0,352,350,1,0,0,0,353,356,1,0,0,0,354,352,1,0,0,0,354,355,1,0,0,
         0,355,358,1,0,0,0,356,354,1,0,0,0,357,349,1,0,0,0,357,358,1,0,0,
-        0,358,359,1,0,0,0,359,401,5,61,0,0,360,361,3,56,28,0,361,362,5,68,
-        0,0,362,363,3,56,28,0,363,401,1,0,0,0,364,365,5,55,0,0,365,401,3,
-        50,25,12,366,367,5,41,0,0,367,401,3,50,25,7,368,380,5,62,0,0,369,
-        374,3,50,25,0,370,371,5,66,0,0,371,373,3,50,25,0,372,370,1,0,0,0,
-        373,376,1,0,0,0,374,372,1,0,0,0,374,375,1,0,0,0,375,378,1,0,0,0,
-        376,374,1,0,0,0,377,379,5,66,0,0,378,377,1,0,0,0,378,379,1,0,0,0,
-        379,381,1,0,0,0,380,369,1,0,0,0,380,381,1,0,0,0,381,382,1,0,0,0,
-        382,401,5,63,0,0,383,395,5,64,0,0,384,389,3,52,26,0,385,386,5,66,
-        0,0,386,388,3,52,26,0,387,385,1,0,0,0,388,391,1,0,0,0,389,387,1,
-        0,0,0,389,390,1,0,0,0,390,393,1,0,0,0,391,389,1,0,0,0,392,394,5,
-        66,0,0,393,392,1,0,0,0,393,394,1,0,0,0,394,396,1,0,0,0,395,384,1,
-        0,0,0,395,396,1,0,0,0,396,397,1,0,0,0,397,401,5,65,0,0,398,401,3,
-        54,27,0,399,401,3,56,28,0,400,342,1,0,0,0,400,347,1,0,0,0,400,360,
-        1,0,0,0,400,364,1,0,0,0,400,366,1,0,0,0,400,368,1,0,0,0,400,383,
-        1,0,0,0,400,398,1,0,0,0,400,399,1,0,0,0,401,430,1,0,0,0,402,403,
-        10,13,0,0,403,404,5,59,0,0,404,429,3,50,25,13,405,406,10,11,0,0,
-        406,407,7,1,0,0,407,429,3,50,25,12,408,409,10,10,0,0,409,410,7,2,
-        0,0,410,429,3,50,25,11,411,412,10,9,0,0,412,413,7,3,0,0,413,429,
-        3,50,25,10,414,415,10,8,0,0,415,416,7,4,0,0,416,429,3,50,25,9,417,
-        418,10,6,0,0,418,419,5,39,0,0,419,429,3,50,25,7,420,421,10,5,0,0,
-        421,422,5,40,0,0,422,429,3,50,25,6,423,424,10,14,0,0,424,425,5,62,
-        0,0,425,426,3,50,25,0,426,427,5,63,0,0,427,429,1,0,0,0,428,402,1,
-        0,0,0,428,405,1,0,0,0,428,408,1,0,0,0,428,411,1,0,0,0,428,414,1,
-        0,0,0,428,417,1,0,0,0,428,420,1,0,0,0,428,423,1,0,0,0,429,432,1,
-        0,0,0,430,428,1,0,0,0,430,431,1,0,0,0,431,51,1,0,0,0,432,430,1,0,
-        0,0,433,436,5,71,0,0,434,436,3,56,28,0,435,433,1,0,0,0,435,434,1,
-        0,0,0,436,437,1,0,0,0,437,438,5,67,0,0,438,439,3,50,25,0,439,53,
-        1,0,0,0,440,441,7,5,0,0,441,55,1,0,0,0,442,443,7,6,0,0,443,57,1,
-        0,0,0,42,59,64,82,88,114,118,126,128,143,155,158,173,176,184,194,
+        0,358,359,1,0,0,0,359,414,5,61,0,0,360,361,5,9,0,0,361,370,5,60,
+        0,0,362,367,3,50,25,0,363,364,5,66,0,0,364,366,3,50,25,0,365,363,
+        1,0,0,0,366,369,1,0,0,0,367,365,1,0,0,0,367,368,1,0,0,0,368,371,
+        1,0,0,0,369,367,1,0,0,0,370,362,1,0,0,0,370,371,1,0,0,0,371,372,
+        1,0,0,0,372,414,5,61,0,0,373,374,3,56,28,0,374,375,5,68,0,0,375,
+        376,3,56,28,0,376,414,1,0,0,0,377,378,5,55,0,0,378,414,3,50,25,12,
+        379,380,5,41,0,0,380,414,3,50,25,7,381,393,5,62,0,0,382,387,3,50,
+        25,0,383,384,5,66,0,0,384,386,3,50,25,0,385,383,1,0,0,0,386,389,
+        1,0,0,0,387,385,1,0,0,0,387,388,1,0,0,0,388,391,1,0,0,0,389,387,
+        1,0,0,0,390,392,5,66,0,0,391,390,1,0,0,0,391,392,1,0,0,0,392,394,
+        1,0,0,0,393,382,1,0,0,0,393,394,1,0,0,0,394,395,1,0,0,0,395,414,
+        5,63,0,0,396,408,5,64,0,0,397,402,3,52,26,0,398,399,5,66,0,0,399,
+        401,3,52,26,0,400,398,1,0,0,0,401,404,1,0,0,0,402,400,1,0,0,0,402,
+        403,1,0,0,0,403,406,1,0,0,0,404,402,1,0,0,0,405,407,5,66,0,0,406,
+        405,1,0,0,0,406,407,1,0,0,0,407,409,1,0,0,0,408,397,1,0,0,0,408,
+        409,1,0,0,0,409,410,1,0,0,0,410,414,5,65,0,0,411,414,3,54,27,0,412,
+        414,3,56,28,0,413,342,1,0,0,0,413,347,1,0,0,0,413,360,1,0,0,0,413,
+        373,1,0,0,0,413,377,1,0,0,0,413,379,1,0,0,0,413,381,1,0,0,0,413,
+        396,1,0,0,0,413,411,1,0,0,0,413,412,1,0,0,0,414,443,1,0,0,0,415,
+        416,10,13,0,0,416,417,5,59,0,0,417,442,3,50,25,13,418,419,10,11,
+        0,0,419,420,7,1,0,0,420,442,3,50,25,12,421,422,10,10,0,0,422,423,
+        7,2,0,0,423,442,3,50,25,11,424,425,10,9,0,0,425,426,7,3,0,0,426,
+        442,3,50,25,10,427,428,10,8,0,0,428,429,7,4,0,0,429,442,3,50,25,
+        9,430,431,10,6,0,0,431,432,5,39,0,0,432,442,3,50,25,7,433,434,10,
+        5,0,0,434,435,5,40,0,0,435,442,3,50,25,6,436,437,10,14,0,0,437,438,
+        5,62,0,0,438,439,3,50,25,0,439,440,5,63,0,0,440,442,1,0,0,0,441,
+        415,1,0,0,0,441,418,1,0,0,0,441,421,1,0,0,0,441,424,1,0,0,0,441,
+        427,1,0,0,0,441,430,1,0,0,0,441,433,1,0,0,0,441,436,1,0,0,0,442,
+        445,1,0,0,0,443,441,1,0,0,0,443,444,1,0,0,0,444,51,1,0,0,0,445,443,
+        1,0,0,0,446,449,5,71,0,0,447,449,3,56,28,0,448,446,1,0,0,0,448,447,
+        1,0,0,0,449,450,1,0,0,0,450,451,5,67,0,0,451,452,3,50,25,0,452,53,
+        1,0,0,0,453,454,7,5,0,0,454,55,1,0,0,0,455,456,7,6,0,0,456,57,1,
+        0,0,0,44,59,64,82,88,114,118,126,128,143,155,158,173,176,184,194,
         199,208,212,218,231,241,254,262,267,278,295,308,319,329,337,354,
-        357,374,378,380,389,393,395,400,428,430,435
+        357,367,370,387,391,393,402,406,408,413,441,443,448
     ]
 
 class EvaParser ( Parser ):
@@ -1320,7 +1325,7 @@ class EvaParser ( Parser ):
             self.state = 176
             self._errHandler.sync(self)
             _la = self._input.LA(1)
-            if ((((_la - 41)) & ~0x3f) == 0 and ((1 << (_la - 41)) & 14774976527) != 0):
+            if (((_la) & ~0x3f) == 0 and ((1 << _la) & 5800669305402032640) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & 1761) != 0):
                 self.state = 168
                 self.expresion(0)
                 self.state = 173
@@ -1516,7 +1521,7 @@ class EvaParser ( Parser ):
                 self.state = 197
                 self.carga()
                 pass
-            elif token in [41, 42, 43, 44, 55, 60, 62, 64, 69, 70, 71, 73, 74]:
+            elif token in [9, 41, 42, 43, 44, 55, 60, 62, 64, 69, 70, 71, 73, 74]:
                 self.enterOuterAlt(localctx, 2)
                 self.state = 198
                 self.expresion(0)
@@ -2678,6 +2683,37 @@ class EvaParser ( Parser ):
                 return visitor.visitChildren(self)
 
 
+    class ExprFiltrarContext(ExpresionContext):
+
+        def __init__(self, parser, ctx:ParserRuleContext): # actually a EvaParser.ExpresionContext
+            super().__init__(parser)
+            self.copyFrom(ctx)
+
+        def AT_FIELD(self):
+            return self.getToken(EvaParser.AT_FIELD, 0)
+        def PAR_IZQ(self):
+            return self.getToken(EvaParser.PAR_IZQ, 0)
+        def PAR_DER(self):
+            return self.getToken(EvaParser.PAR_DER, 0)
+        def expresion(self, i:int=None):
+            if i is None:
+                return self.getTypedRuleContexts(EvaParser.ExpresionContext)
+            else:
+                return self.getTypedRuleContext(EvaParser.ExpresionContext,i)
+
+        def COMA(self, i:int=None):
+            if i is None:
+                return self.getTokens(EvaParser.COMA)
+            else:
+                return self.getToken(EvaParser.COMA, i)
+
+        def accept(self, visitor:ParseTreeVisitor):
+            if hasattr( visitor, "visitExprFiltrar" ):
+                return visitor.visitExprFiltrar(self)
+            else:
+                return visitor.visitChildren(self)
+
+
     class ExprAditivaContext(ExpresionContext):
 
         def __init__(self, parser, ctx:ParserRuleContext): # actually a EvaParser.ExpresionContext
@@ -3034,9 +3070,9 @@ class EvaParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 400
+            self.state = 413
             self._errHandler.sync(self)
-            la_ = self._interp.adaptivePredict(self._input,38,self._ctx)
+            la_ = self._interp.adaptivePredict(self._input,40,self._ctx)
             if la_ == 1:
                 localctx = EvaParser.ExprParentesisContext(self, localctx)
                 self._ctx = localctx
@@ -3061,7 +3097,7 @@ class EvaParser ( Parser ):
                 self.state = 357
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if ((((_la - 41)) & ~0x3f) == 0 and ((1 << (_la - 41)) & 14774976527) != 0):
+                if (((_la) & ~0x3f) == 0 and ((1 << _la) & 5800669305402032640) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & 1761) != 0):
                     self.state = 349
                     self.expresion(0)
                     self.state = 354
@@ -3083,274 +3119,306 @@ class EvaParser ( Parser ):
                 pass
 
             elif la_ == 3:
-                localctx = EvaParser.ExprColumnaDeContext(self, localctx)
+                localctx = EvaParser.ExprFiltrarContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
                 self.state = 360
-                self.nombre()
+                self.match(EvaParser.AT_FIELD)
                 self.state = 361
-                self.match(EvaParser.PUNTO)
-                self.state = 362
-                self.nombre()
+                self.match(EvaParser.PAR_IZQ)
+                self.state = 370
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                if (((_la) & ~0x3f) == 0 and ((1 << _la) & 5800669305402032640) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & 1761) != 0):
+                    self.state = 362
+                    self.expresion(0)
+                    self.state = 367
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+                    while _la==66:
+                        self.state = 363
+                        self.match(EvaParser.COMA)
+                        self.state = 364
+                        self.expresion(0)
+                        self.state = 369
+                        self._errHandler.sync(self)
+                        _la = self._input.LA(1)
+
+
+
+                self.state = 372
+                self.match(EvaParser.PAR_DER)
                 pass
 
             elif la_ == 4:
-                localctx = EvaParser.ExprNegativoContext(self, localctx)
+                localctx = EvaParser.ExprColumnaDeContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 364
-                self.match(EvaParser.MENOS)
-                self.state = 365
-                self.expresion(12)
+                self.state = 373
+                self.nombre()
+                self.state = 374
+                self.match(EvaParser.PUNTO)
+                self.state = 375
+                self.nombre()
                 pass
 
             elif la_ == 5:
-                localctx = EvaParser.ExprNoContext(self, localctx)
+                localctx = EvaParser.ExprNegativoContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 366
-                self.match(EvaParser.NO)
-                self.state = 367
-                self.expresion(7)
+                self.state = 377
+                self.match(EvaParser.MENOS)
+                self.state = 378
+                self.expresion(12)
                 pass
 
             elif la_ == 6:
-                localctx = EvaParser.ExprListaContext(self, localctx)
+                localctx = EvaParser.ExprNoContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 368
-                self.match(EvaParser.COR_IZQ)
+                self.state = 379
+                self.match(EvaParser.NO)
                 self.state = 380
-                self._errHandler.sync(self)
-                _la = self._input.LA(1)
-                if ((((_la - 41)) & ~0x3f) == 0 and ((1 << (_la - 41)) & 14774976527) != 0):
-                    self.state = 369
-                    self.expresion(0)
-                    self.state = 374
-                    self._errHandler.sync(self)
-                    _alt = self._interp.adaptivePredict(self._input,32,self._ctx)
-                    while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
-                        if _alt==1:
-                            self.state = 370
-                            self.match(EvaParser.COMA)
-                            self.state = 371
-                            self.expresion(0) 
-                        self.state = 376
-                        self._errHandler.sync(self)
-                        _alt = self._interp.adaptivePredict(self._input,32,self._ctx)
-
-                    self.state = 378
-                    self._errHandler.sync(self)
-                    _la = self._input.LA(1)
-                    if _la==66:
-                        self.state = 377
-                        self.match(EvaParser.COMA)
-
-
-
-
-                self.state = 382
-                self.match(EvaParser.COR_DER)
+                self.expresion(7)
                 pass
 
             elif la_ == 7:
-                localctx = EvaParser.ExprDiccionarioContext(self, localctx)
+                localctx = EvaParser.ExprListaContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 383
-                self.match(EvaParser.LLAVE_IZQ)
-                self.state = 395
+                self.state = 381
+                self.match(EvaParser.COR_IZQ)
+                self.state = 393
                 self._errHandler.sync(self)
                 _la = self._input.LA(1)
-                if ((((_la - 71)) & ~0x3f) == 0 and ((1 << (_la - 71)) & 13) != 0):
-                    self.state = 384
-                    self.par()
-                    self.state = 389
+                if (((_la) & ~0x3f) == 0 and ((1 << _la) & 5800669305402032640) != 0) or ((((_la - 64)) & ~0x3f) == 0 and ((1 << (_la - 64)) & 1761) != 0):
+                    self.state = 382
+                    self.expresion(0)
+                    self.state = 387
                     self._errHandler.sync(self)
-                    _alt = self._interp.adaptivePredict(self._input,35,self._ctx)
+                    _alt = self._interp.adaptivePredict(self._input,34,self._ctx)
                     while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                         if _alt==1:
-                            self.state = 385
+                            self.state = 383
                             self.match(EvaParser.COMA)
-                            self.state = 386
-                            self.par() 
-                        self.state = 391
+                            self.state = 384
+                            self.expresion(0) 
+                        self.state = 389
                         self._errHandler.sync(self)
-                        _alt = self._interp.adaptivePredict(self._input,35,self._ctx)
+                        _alt = self._interp.adaptivePredict(self._input,34,self._ctx)
 
-                    self.state = 393
+                    self.state = 391
                     self._errHandler.sync(self)
                     _la = self._input.LA(1)
                     if _la==66:
-                        self.state = 392
+                        self.state = 390
                         self.match(EvaParser.COMA)
 
 
 
 
-                self.state = 397
-                self.match(EvaParser.LLAVE_DER)
+                self.state = 395
+                self.match(EvaParser.COR_DER)
                 pass
 
             elif la_ == 8:
-                localctx = EvaParser.ExprLiteralContext(self, localctx)
+                localctx = EvaParser.ExprDiccionarioContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 398
-                self.literal()
+                self.state = 396
+                self.match(EvaParser.LLAVE_IZQ)
+                self.state = 408
+                self._errHandler.sync(self)
+                _la = self._input.LA(1)
+                if ((((_la - 71)) & ~0x3f) == 0 and ((1 << (_la - 71)) & 13) != 0):
+                    self.state = 397
+                    self.par()
+                    self.state = 402
+                    self._errHandler.sync(self)
+                    _alt = self._interp.adaptivePredict(self._input,37,self._ctx)
+                    while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
+                        if _alt==1:
+                            self.state = 398
+                            self.match(EvaParser.COMA)
+                            self.state = 399
+                            self.par() 
+                        self.state = 404
+                        self._errHandler.sync(self)
+                        _alt = self._interp.adaptivePredict(self._input,37,self._ctx)
+
+                    self.state = 406
+                    self._errHandler.sync(self)
+                    _la = self._input.LA(1)
+                    if _la==66:
+                        self.state = 405
+                        self.match(EvaParser.COMA)
+
+
+
+
+                self.state = 410
+                self.match(EvaParser.LLAVE_DER)
                 pass
 
             elif la_ == 9:
+                localctx = EvaParser.ExprLiteralContext(self, localctx)
+                self._ctx = localctx
+                _prevctx = localctx
+                self.state = 411
+                self.literal()
+                pass
+
+            elif la_ == 10:
                 localctx = EvaParser.ExprNombreContext(self, localctx)
                 self._ctx = localctx
                 _prevctx = localctx
-                self.state = 399
+                self.state = 412
                 self.nombre()
                 pass
 
 
             self._ctx.stop = self._input.LT(-1)
-            self.state = 430
+            self.state = 443
             self._errHandler.sync(self)
-            _alt = self._interp.adaptivePredict(self._input,40,self._ctx)
+            _alt = self._interp.adaptivePredict(self._input,42,self._ctx)
             while _alt!=2 and _alt!=ATN.INVALID_ALT_NUMBER:
                 if _alt==1:
                     if self._parseListeners is not None:
                         self.triggerExitRuleEvent()
                     _prevctx = localctx
-                    self.state = 428
+                    self.state = 441
                     self._errHandler.sync(self)
-                    la_ = self._interp.adaptivePredict(self._input,39,self._ctx)
+                    la_ = self._interp.adaptivePredict(self._input,41,self._ctx)
                     if la_ == 1:
                         localctx = EvaParser.ExprPotenciaContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 402
+                        self.state = 415
                         if not self.precpred(self._ctx, 13):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 13)")
-                        self.state = 403
+                        self.state = 416
                         self.match(EvaParser.POTENCIA)
-                        self.state = 404
+                        self.state = 417
                         self.expresion(13)
                         pass
 
                     elif la_ == 2:
                         localctx = EvaParser.ExprMultiplicativaContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 405
+                        self.state = 418
                         if not self.precpred(self._ctx, 11):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 11)")
-                        self.state = 406
+                        self.state = 419
                         _la = self._input.LA(1)
                         if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 504403158265495552) != 0)):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 407
+                        self.state = 420
                         self.expresion(12)
                         pass
 
                     elif la_ == 3:
                         localctx = EvaParser.ExprAditivaContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 408
+                        self.state = 421
                         if not self.precpred(self._ctx, 10):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 10)")
-                        self.state = 409
+                        self.state = 422
                         _la = self._input.LA(1)
                         if not(_la==54 or _la==55):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 410
+                        self.state = 423
                         self.expresion(11)
                         pass
 
                     elif la_ == 4:
                         localctx = EvaParser.ExprRelacionalContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 411
+                        self.state = 424
                         if not self.precpred(self._ctx, 9):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 9)")
-                        self.state = 412
+                        self.state = 425
                         _la = self._input.LA(1)
                         if not((((_la) & ~0x3f) == 0 and ((1 << _la) & 8444249301319680) != 0)):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 413
+                        self.state = 426
                         self.expresion(10)
                         pass
 
                     elif la_ == 5:
                         localctx = EvaParser.ExprIgualdadContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 414
+                        self.state = 427
                         if not self.precpred(self._ctx, 8):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 8)")
-                        self.state = 415
+                        self.state = 428
                         _la = self._input.LA(1)
                         if not(_la==47 or _la==48):
                             self._errHandler.recoverInline(self)
                         else:
                             self._errHandler.reportMatch(self)
                             self.consume()
-                        self.state = 416
+                        self.state = 429
                         self.expresion(9)
                         pass
 
                     elif la_ == 6:
                         localctx = EvaParser.ExprYContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 417
+                        self.state = 430
                         if not self.precpred(self._ctx, 6):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 6)")
-                        self.state = 418
+                        self.state = 431
                         self.match(EvaParser.Y)
-                        self.state = 419
+                        self.state = 432
                         self.expresion(7)
                         pass
 
                     elif la_ == 7:
                         localctx = EvaParser.ExprOContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 420
+                        self.state = 433
                         if not self.precpred(self._ctx, 5):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 5)")
-                        self.state = 421
+                        self.state = 434
                         self.match(EvaParser.O)
-                        self.state = 422
+                        self.state = 435
                         self.expresion(6)
                         pass
 
                     elif la_ == 8:
                         localctx = EvaParser.ExprIndiceContext(self, EvaParser.ExpresionContext(self, _parentctx, _parentState))
                         self.pushNewRecursionContext(localctx, _startState, self.RULE_expresion)
-                        self.state = 423
+                        self.state = 436
                         if not self.precpred(self._ctx, 14):
                             from antlr4.error.Errors import FailedPredicateException
                             raise FailedPredicateException(self, "self.precpred(self._ctx, 14)")
-                        self.state = 424
+                        self.state = 437
                         self.match(EvaParser.COR_IZQ)
-                        self.state = 425
+                        self.state = 438
                         self.expresion(0)
-                        self.state = 426
+                        self.state = 439
                         self.match(EvaParser.COR_DER)
                         pass
 
              
-                self.state = 432
+                self.state = 445
                 self._errHandler.sync(self)
-                _alt = self._interp.adaptivePredict(self._input,40,self._ctx)
+                _alt = self._interp.adaptivePredict(self._input,42,self._ctx)
 
         except RecognitionException as re:
             localctx.exception = re
@@ -3400,23 +3468,23 @@ class EvaParser ( Parser ):
         self.enterRule(localctx, 52, self.RULE_par)
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 435
+            self.state = 448
             self._errHandler.sync(self)
             token = self._input.LA(1)
             if token in [71]:
-                self.state = 433
+                self.state = 446
                 self.match(EvaParser.CADENA)
                 pass
             elif token in [73, 74]:
-                self.state = 434
+                self.state = 447
                 self.nombre()
                 pass
             else:
                 raise NoViableAltException(self)
 
-            self.state = 437
+            self.state = 450
             self.match(EvaParser.DOS_PUNTOS)
-            self.state = 438
+            self.state = 451
             self.expresion(0)
         except RecognitionException as re:
             localctx.exception = re
@@ -3471,7 +3539,7 @@ class EvaParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 440
+            self.state = 453
             _la = self._input.LA(1)
             if not(((((_la - 42)) & ~0x3f) == 0 and ((1 << (_la - 42)) & 939524103) != 0)):
                 self._errHandler.recoverInline(self)
@@ -3519,7 +3587,7 @@ class EvaParser ( Parser ):
         self._la = 0 # Token type
         try:
             self.enterOuterAlt(localctx, 1)
-            self.state = 442
+            self.state = 455
             _la = self._input.LA(1)
             if not(_la==73 or _la==74):
                 self._errHandler.recoverInline(self)

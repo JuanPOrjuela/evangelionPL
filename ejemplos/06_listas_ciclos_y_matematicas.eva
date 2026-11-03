@@ -62,3 +62,11 @@ mostrar precios * 1.19
 mostrar media(precios)
 mostrar [1, 2, 3] + [10, 20, 30]
 mostrar raiz([4, 9, 16])
+
+# --- Estilo funcional: se le pasa una funcion a mapear y a filtrar ---
+funcion doble(x) { retornar x * 2 }
+funcion es_par(x) { retornar x % 2 == 0 }
+numeros = rango(6)
+mostrar mapear(doble, numeros)
+mostrar filtrar(es_par, numeros)
+mostrar suma(mapear(doble, filtrar(es_par, numeros)))

@@ -64,6 +64,7 @@ primario       = literal
                | nombre
                | nombre , "." , nombre
                | ID , "(" , [ expresion , { "," , expresion } ] , ")"
+               | "AT_FIELD" / "filtrar" , "(" , [ expresion , { "," , expresion } ] , ")"
                | "[" , [ expresion , { "," , expresion } , [ "," ] ] , "]"
                | "{" , [ par , { "," , par } , [ "," ] ] , "}"
                | "(" , expresion , ")" ;

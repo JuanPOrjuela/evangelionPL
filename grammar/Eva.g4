@@ -74,6 +74,7 @@ listaColumnas : COR_IZQ nombre ( COMA nombre )* COR_DER ;
 expresion
     : PAR_IZQ expresion PAR_DER                                         # exprParentesis
     | ID PAR_IZQ ( expresion ( COMA expresion )* )? PAR_DER             # exprLlamada
+    | AT_FIELD PAR_IZQ ( expresion ( COMA expresion )* )? PAR_DER       # exprFiltrar
     | nombre PUNTO nombre                                               # exprColumnaDe
     | expresion COR_IZQ expresion COR_DER                               # exprIndice
     | <assoc=right> expresion POTENCIA expresion                        # exprPotencia
