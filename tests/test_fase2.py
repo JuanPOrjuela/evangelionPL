@@ -29,6 +29,7 @@ CARGA = 't = ENTRY_PLUG "p.csv"'
 def datos(tmp_path, monkeypatch):
     monkeypatch.chdir(tmp_path)
     (tmp_path / "p.csv").write_text(CSV, encoding="utf-8")
+    (tmp_path / "salidas").mkdir()
     return tmp_path
 
 

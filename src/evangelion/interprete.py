@@ -1,17 +1,14 @@
 """El Visitor recorre el arbol y ejecuta el programa con nuestras librerias:
 tablas (datos), matematica, matrices, aprendizaje (modelos) y graficas."""
 
-import re
-import sys
-from dataclasses import dataclass
-from pathlib import Path
-
 from . import aprendizaje, graficas, matematica, matrices
+from .archivos import con_barras, existe, extension
 from .errores import ErrorSemantico
 from .generado.EvaParser import EvaParser
 from .generado.EvaVisitor import EvaVisitor
+from .listas import Lista, ordenada
 from .simbolos import TablaSimbolos
-from .tablas import Columna, Tabla, es_numero, escribir_csv, leer_csv
+from .tablas import Columna, Tabla, es_entero_texto, es_numero, es_real_texto, escribir_csv, leer_csv
 
 # Cada agregacion es un metodo de Columna con el mismo nombre
 AGREGACIONES = ("suma", "media", "mediana", "minimo", "maximo", "desviacion", "contar")
@@ -58,12 +55,13 @@ COMPARADORES = {"<": lambda a, b: a < b, "<=": lambda a, b: a <= b,
 FILAS_EN_PANTALLA = 12
 
 
-@dataclass
 class Funcion:
     """Una funcion definida en el programa con funcion nombre(a, b) { ... }."""
-    nombre: str
-    parametros: list
-    cuerpo: object      # el nodo bloque del arbol, se visita en cada llamada
+
+    def __init__(self, nombre: str, parametros: Lista, cuerpo):
+        self.nombre = nombre
+        self.parametros = parametros
+        self.cuerpo = cuerpo      # el nodo bloque del arbol, se visita en cada llamada
 
 
 class Retorno(Exception):
@@ -74,11 +72,12 @@ class Retorno(Exception):
         self.valor = valor
 
 
-@dataclass
 class Agrupada:
     """Lo que deja SQUAD: una tabla con sus grupos, esperando a MAGI."""
-    tabla: Tabla
-    columnas: list
+
+    def __init__(self, tabla: Tabla, columnas: Lista):
+        self.tabla = tabla
+        self.columnas = columnas
 
 
 def clase_de(valor) -> str:
@@ -92,7 +91,7 @@ def clase_de(valor) -> str:
         return "nulo"
     if isinstance(valor, bool):
         return "booleano"
-    if isinstance(valor, list):
+    if isinstance(valor, Lista):
         return "lista"
     if isinstance(valor, dict):
         return "diccionario"
@@ -122,25 +121,34 @@ def limpiar(nombre: str) -> str:
 
 
 def quitar_comillas(crudo: str) -> str:
+    """"Tokio\\n3" -> Tokio y un salto de linea y 3"""
     escapes = {"n": "\n", "t": "\t"}
-    return re.sub(r'\\(["\\nt])', lambda m: escapes.get(m.group(1), m.group(1)), crudo[1:-1])
+    texto, i, fin = "", 1, len(crudo) - 1
+    while i < fin:
+        if crudo[i] == "\\" and i + 1 < fin:
+            i += 1
+            texto += escapes.get(crudo[i], crudo[i])
+        else:
+            texto += crudo[i]
+        i += 1
+    return texto
 
 
 def distancia(a: str, b: str) -> int:
     """Distancia de Levenshtein: cuantas letras hay que poner, quitar o cambiar
     para pasar de una palabra a la otra."""
-    anterior = list(range(len(b) + 1))
+    anterior = Lista(range(len(b) + 1))
     for i, letra_a in enumerate(a, 1):
-        actual = [i]
+        actual = Lista((i,))
         for j, letra_b in enumerate(b, 1):
-            actual.append(min(anterior[j] + 1, actual[j - 1] + 1,
+            actual.agregar(min(anterior[j] + 1, actual[j - 1] + 1,
                               anterior[j - 1] + (letra_a != letra_b)))
         anterior = actual
     return anterior[-1]
 
 
 def sugerir(nombre: str, opciones) -> str:
-    opciones = [str(o) for o in opciones]
+    opciones = Lista(str(o) for o in opciones)
     if not opciones:
         return ""
     cercana = min(opciones, key=lambda o: distancia(nombre.lower(), o.lower()))
@@ -163,10 +171,10 @@ def texto_de(valor, dentro: bool = False) -> str:
         return f"<tabla de {len(valor)} filas>"
     if isinstance(valor, Funcion):
         return f"<función {valor.nombre}({', '.join(valor.parametros)})>"
-    if isinstance(valor, list):
-        partes = [texto_de(v, True) for v in valor[:ELEMENTOS_EN_PANTALLA]]
+    if isinstance(valor, Lista):
+        partes = Lista(texto_de(v, True) for v in valor[:ELEMENTOS_EN_PANTALLA])
         if len(valor) > ELEMENTOS_EN_PANTALLA:
-            partes.append(f"... ({len(valor)} en total)")
+            partes.agregar(f"... ({len(valor)} en total)")
         return "[" + ", ".join(partes) + "]"
     if isinstance(valor, dict):
         return "{" + ", ".join(f"{texto_de(k, True)}: {texto_de(v, True)}" for k, v in valor.items()) + "}"
@@ -175,7 +183,7 @@ def texto_de(valor, dentro: bool = False) -> str:
 
 def como_matriz(valor) -> str:
     """Una matriz se muestra fila por fila, con las columnas alineadas."""
-    celdas = [[texto_de(v) for v in fila] for fila in valor]
+    celdas = Lista(Lista(texto_de(v) for v in fila) for fila in valor)
     ancho = max(len(c) for fila in celdas for c in fila)
     return "\n".join("  [ " + "  ".join(c.rjust(ancho) for c in fila) + " ]" for fila in celdas)
 
@@ -185,13 +193,11 @@ class Interprete(EvaVisitor):
     def __init__(self):
         self.simbolos = TablaSimbolos()
         self.operacion = ""
-        self.reportes = []       # archivos que escribio SEELE
-        self.graficas = []       # archivos que dibujo HOLOGRAM
+        self.reportes = Lista()       # archivos que escribio SEELE
+        self.graficas = Lista()       # archivos que dibujo HOLOGRAM
         self._entrada = None     # lo que recibe la etapa que se esta ejecutando
         self._tabla = None       # tabla cuyas columnas se pueden nombrar ahora
         self.azar = matematica.Aleatorio()
-        # cada llamada del lenguaje usa unas 25 llamadas de Python al recorrer el arbol
-        sys.setrecursionlimit(max(sys.getrecursionlimit(), 30 * MAX_PROFUNDIDAD + 1000))
 
     def ejecutar(self, arbol) -> None:
         self.visit(arbol)
@@ -225,7 +231,7 @@ class Interprete(EvaVisitor):
             contenedor = self._elemento(indice, contenedor, self.visit(indice.expresion()))
         ultimo = indices[-1]
         clave = self.visit(ultimo.expresion())
-        if isinstance(contenedor, list):
+        if isinstance(contenedor, Lista):
             contenedor[self._posicion(ultimo, contenedor, clave)] = valor
         elif isinstance(contenedor, dict):
             self._revisar_clave(ultimo, clave)
@@ -238,11 +244,11 @@ class Interprete(EvaVisitor):
         valor = self.visit(ctx.flujo())
         if isinstance(valor, Columna):
             nombre = valor.nombre or "columna"
-            valor = Tabla([nombre], {nombre: valor.valores})
+            valor = Tabla(Lista((nombre,)), {nombre: valor.valores})
         # si el flujo es solo un nombre lo usamos de titulo
         texto = ctx.flujo().getText()
-        titulo = " " + texto if re.fullmatch(r"[^\W\d]\w*", texto) else ""
-        textos = isinstance(valor, list) and valor and all(isinstance(v, str) for v in valor)
+        titulo = " " + texto if texto.isidentifier() else ""
+        textos = isinstance(valor, Lista) and valor and all(isinstance(v, str) for v in valor)
         if textos and len(texto_de(valor)) > 100:
             # una lista larga de textos (como las reglas de un arbol) va una por linea
             print(f"MONITOR{titulo} ({len(valor)} elementos)")
@@ -266,16 +272,17 @@ class Interprete(EvaVisitor):
         valor = self.visit(ctx.flujo())
         if not isinstance(valor, Tabla):
             raise ErrorSemantico(ctx.flujo(), f"SEELE solo recibe tablas y aquí llegó {describir(valor)}.")
-        ruta = Path(quitar_comillas(ctx.CADENA().getText()))
-        if ruta.suffix.lower() != ".csv":
+        ruta = quitar_comillas(ctx.CADENA().getText())
+        if extension(ruta) != ".csv":
             raise ErrorSemantico(ctx.CADENA().symbol, "por ahora los reportes solo se guardan en .csv.")
         try:
-            ruta.parent.mkdir(parents=True, exist_ok=True)
             escribir_csv(valor, ruta)
+        except FileNotFoundError:
+            raise ErrorSemantico(ctx.CADENA().symbol, f"la carpeta de '{ruta}' no existe; hay que crearla primero.")
         except OSError as error:
             raise ErrorSemantico(ctx.CADENA().symbol, f"no se pudo escribir '{ruta}': {error}.")
-        self.reportes.append(ruta.as_posix())
-        print(f"SEELE recibió el reporte {ruta.as_posix()} ({len(valor)} filas)\n")
+        self.reportes.agregar(con_barras(ruta))
+        print(f"SEELE recibió el reporte {con_barras(ruta)} ({len(valor)} filas)\n")
 
     def visitGraficar(self, ctx):
         tipo = ctx.ID().getText()
@@ -289,22 +296,23 @@ class Interprete(EvaVisitor):
         donde = {o.ID().getText(): o for o in ctx.opcion()}
         grafica = self._armar_grafica(ctx, tipo, valores, donde)
 
-        ruta = Path(valores.get("archivo") or f"salidas/{tipo}_{len(self.graficas) + 1}.png")
-        if ruta.suffix.lower() not in (".png", ".svg"):
+        ruta = valores.get("archivo") or f"salidas/{tipo}_{len(self.graficas) + 1}.png"
+        if extension(ruta) not in (".png", ".svg"):
             raise ErrorSemantico(donde["archivo"], "las gráficas se guardan en .png o en .svg.")
         try:
-            ruta.parent.mkdir(parents=True, exist_ok=True)
             usadas = graficas.guardar(grafica, ruta)
         except ValueError as error:
             raise ErrorSemantico(ctx, f"HOLOGRAM no pudo dibujar la gráfica: {error}.")
+        except FileNotFoundError:
+            raise ErrorSemantico(ctx, f"la carpeta de '{ruta}' no existe; hay que crearla primero.")
         except OSError as error:
             raise ErrorSemantico(ctx, f"no se pudo escribir '{ruta}': {error}.")
-        self.graficas.append(ruta.as_posix())
-        print(f"HOLOGRAM proyectó la gráfica de {tipo} en {ruta.as_posix()} ({usadas} filas)\n")
+        self.graficas.agregar(con_barras(ruta))
+        print(f"HOLOGRAM proyectó la gráfica de {tipo} en {con_barras(ruta)} ({usadas} filas)\n")
 
     def _armar_grafica(self, ctx, tipo, valores, donde) -> graficas.Grafica:
         """Revisa que cada opcion tenga el tipo que le toca y arma la Grafica."""
-        faltan = [eje for eje in graficas.OBLIGATORIOS[tipo] if eje not in valores]
+        faltan = Lista(eje for eje in graficas.OBLIGATORIOS[tipo] if eje not in valores)
         if faltan:
             raise ErrorSemantico(ctx, f"la gráfica de {tipo} necesita {' y '.join(faltan)}.")
         for eje in EJES:
@@ -372,8 +380,8 @@ class Interprete(EvaVisitor):
                 elementos = coleccion.registros()   # cada fila llega como un diccionario
             elif isinstance(coleccion, Columna):
                 elementos = coleccion.valores
-            elif isinstance(coleccion, (list, dict, str)):
-                elementos = list(coleccion)         # de un diccionario se recorren las claves
+            elif isinstance(coleccion, (Lista, dict, str)):
+                elementos = Lista(coleccion)         # de un diccionario se recorren las claves
             else:
                 raise ErrorSemantico(ctx.expresion(0), "para ... en necesita una lista, un diccionario, "
                                                        f"un texto o una tabla, y llegó {describir(coleccion)}.")
@@ -400,8 +408,8 @@ class Interprete(EvaVisitor):
         if nombre in TODAS or nombre in AGREGACIONES:
             raise ErrorSemantico(ctx.ID().symbol, f"'{nombre}' ya es una función del lenguaje; "
                                                   "ponle otro nombre a la tuya.")
-        parametros = [limpiar(n.getText()) for n in ctx.nombre()]
-        repetidos = {p for p in parametros if parametros.count(p) > 1}
+        parametros = Lista(limpiar(n.getText()) for n in ctx.nombre())
+        repetidos = {p for p in parametros if parametros.contar(p) > 1}
         if repetidos:
             raise ErrorSemantico(ctx, f"el parámetro '{repetidos.pop()}' está repetido.")
         self.simbolos.definir(nombre, "funcion", Funcion(nombre, parametros, ctx.bloque()), ctx.start.line)
@@ -411,10 +419,10 @@ class Interprete(EvaVisitor):
             raise ErrorSemantico(ctx, "retornar solo puede ir dentro de una función.")
         valor = self.visit(ctx.flujo())
         if isinstance(valor, Columna) and self._tabla is None:
-            valor = list(valor.valores)
+            valor = Lista(valor.valores)
         raise Retorno(valor)
 
-    def _invocar(self, ctx, funcion: Funcion, args: list):
+    def _invocar(self, ctx, funcion: Funcion, args: Lista):
         if len(args) != len(funcion.parametros):
             raise ErrorSemantico(ctx, f"{funcion.nombre}() recibe {len(funcion.parametros)} argumentos "
                                       f"({', '.join(funcion.parametros) or 'ninguno'}) y le llegaron {len(args)}.")
@@ -432,6 +440,9 @@ class Interprete(EvaVisitor):
             return None     # una funcion sin retornar devuelve nulo
         except Retorno as retorno:
             return retorno.valor
+        except RecursionError:
+            raise ErrorSemantico(ctx, f"{funcion.nombre}() se llamó a sí misma demasiadas veces seguidas; "
+                                      "revisa que la recursión tenga un caso que la detenga.")
         finally:
             self.simbolos.salir()
             self._tabla, self._entrada = guardado
@@ -443,7 +454,7 @@ class Interprete(EvaVisitor):
                                       f"y llegó {describir(funcion)}.")
 
         def llamar(x):
-            resultado = self._invocar(ctx, funcion, [x])
+            resultado = self._invocar(ctx, funcion, Lista((x,)))
             if not es_numero(resultado):
                 raise ErrorSemantico(ctx, f"{funcion.nombre}() tiene que devolver un número para "
                                           f"{nombre}() y devolvió {describir(resultado)}.")
@@ -453,12 +464,12 @@ class Interprete(EvaVisitor):
     def _numerico(self, ctx, nombre, args):
         if nombre == "mapear":
             # aplica la funcion a cada elemento; con una columna devuelve otra columna
-            if not isinstance(args[0], Funcion) or not isinstance(args[1], (list, Columna)):
+            if not isinstance(args[0], Funcion) or not isinstance(args[1], (Lista, Columna)):
                 raise ValueError("va así: mapear(funcion, lista) o mapear(funcion, columna)")
             if isinstance(args[1], Columna):
-                return Columna([None if x is None else self._invocar(ctx, args[0], [x])
-                                for x in args[1].valores])
-            return [self._invocar(ctx, args[0], [x]) for x in args[1]]
+                return Columna(Lista(None if x is None else self._invocar(ctx, args[0], Lista((x,)))
+                                for x in args[1].valores))
+            return Lista(self._invocar(ctx, args[0], Lista((x,))) for x in args[1])
         f = self._como_python(ctx, args[0], nombre)
         self._exigir(ctx, nombre + "()", "numero", *args[1:])
         return getattr(matematica, nombre)(f, *args[1:])
@@ -485,7 +496,7 @@ class Interprete(EvaVisitor):
     def visitCarga(self, ctx):
         ruta = quitar_comillas(ctx.CADENA().getText())
         opciones = self._opciones(ctx.opcion(), OPCIONES_CARGA)
-        if not Path(ruta).is_file():
+        if not existe(ruta):
             raise ErrorSemantico(ctx.CADENA().symbol, f"no existe el archivo '{ruta}'.")
         try:
             return leer_csv(ruta, separador=opciones.get("separador", ","),
@@ -521,8 +532,8 @@ class Interprete(EvaVisitor):
                                  + sugerir(nombre, tabla.columnas))
         return nombre
 
-    def _columnas(self, tabla, lista) -> list:
-        return [self._columna(tabla, n) for n in lista.nombre()]
+    def _columnas(self, tabla, lista) -> Lista:
+        return Lista(self._columna(tabla, n) for n in lista.nombre())
 
     def _evaluar_en(self, tabla, expresion):
         anterior, self._tabla = self._tabla, tabla
@@ -539,7 +550,7 @@ class Interprete(EvaVisitor):
 
     @staticmethod
     def _sin_repetidas(ctx, nombres) -> None:
-        repetidas = [n for i, n in enumerate(nombres) if n in nombres[:i]]
+        repetidas = Lista(n for i, n in enumerate(nombres) if n in nombres[:i])
         if repetidas:
             raise ErrorSemantico(ctx, f"la columna '{repetidas[0]}' está repetida en la lista.")
 
@@ -559,7 +570,7 @@ class Interprete(EvaVisitor):
             valor = self._evaluar_en(tabla, nueva.expresion())
             if isinstance(valor, Tabla):
                 raise ErrorSemantico(nueva.expresion(), "una tabla no cabe dentro de una columna.")
-            if isinstance(valor, list):
+            if isinstance(valor, Lista):
                 # una lista con un valor por fila se vuelve la columna
                 valor = Columna(valor)
             if isinstance(valor, Columna) and len(valor) != len(tabla):
@@ -578,17 +589,17 @@ class Interprete(EvaVisitor):
                 raise ErrorSemantico(renombre.nombre(0), f"la columna '{viejo}' se renombra dos veces.")
             cambios[viejo] = limpiar(renombre.nombre(1).getText())
         # se mira como quedan todas juntas, asi [a -> b, b -> a] intercambia los nombres
-        finales = [cambios.get(c, c) for c in tabla.columnas]
+        finales = Lista(cambios.get(c, c) for c in tabla.columnas)
         for renombre in ctx.renombre():
             nuevo = limpiar(renombre.nombre(1).getText())
-            if finales.count(nuevo) > 1:
+            if finales.contar(nuevo) > 1:
                 raise ErrorSemantico(renombre.nombre(1), f"quedarían dos columnas llamadas '{nuevo}'.")
         return tabla.renombrar(cambios)
 
     def visitEtapaOrdenar(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
-        columnas = [self._columna(tabla, c.nombre()) for c in ctx.criterio()]
-        ascendentes = [c.DESC() is None for c in ctx.criterio()]
+        columnas = Lista(self._columna(tabla, c.nombre()) for c in ctx.criterio())
+        ascendentes = Lista(c.DESC() is None for c in ctx.criterio())
         try:
             return tabla.ordenar(columnas, ascendentes)
         except TypeError:
@@ -648,25 +659,25 @@ class Interprete(EvaVisitor):
         if isinstance(entrada, Agrupada):
             tabla, claves = entrada.tabla, entrada.columnas
         elif isinstance(entrada, Tabla):
-            tabla, claves = entrada, []
+            tabla, claves = entrada, Lista()
         else:
             raise ErrorSemantico(ctx, f"MAGI solo funciona sobre una tabla y aquí llegó {describir(entrada)}.")
 
-        calculos = []   # (nombre, funcion, columna)
+        calculos = Lista()   # (nombre, funcion, columna)
         for agregacion in ctx.agregacion():
             nombre = limpiar(agregacion.nombre(0).getText())
             funcion = agregacion.ID().getText()
             if funcion not in AGREGACIONES:
                 raise ErrorSemantico(agregacion.ID().symbol, f"MAGI no conoce el cálculo '{funcion}'."
                                      + sugerir(funcion, AGREGACIONES))
-            if nombre in claves or nombre in [c[0] for c in calculos]:
+            if nombre in claves or nombre in Lista(c[0] for c in calculos):
                 raise ErrorSemantico(agregacion, f"ya hay una columna llamada '{nombre}' en el resumen.")
 
             if len(agregacion.nombre()) == 1:
                 # sin columna solo tiene sentido contar las filas
                 if funcion != "contar":
                     raise ErrorSemantico(agregacion, f"{funcion}() necesita el nombre de una columna.")
-                calculos.append((nombre, funcion, None))
+                calculos.agregar((nombre, funcion, None))
                 continue
 
             columna = self._columna(tabla, agregacion.nombre(1))
@@ -674,7 +685,7 @@ class Interprete(EvaVisitor):
                 raise ErrorSemantico(agregacion.nombre(1),
                                      f"tipos incompatibles: {funcion}() necesita números "
                                      f"y '{columna}' es {describir(tabla[columna])}.")
-            calculos.append((nombre, funcion, columna))
+            calculos.agregar((nombre, funcion, columna))
 
         return tabla.resumir(claves, calculos)
 
@@ -683,7 +694,7 @@ class Interprete(EvaVisitor):
 
     def visitEtapaDiagnostico(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
-        filas = []
+        filas = Lista()
         for nombre in tabla.columnas:
             columna = tabla[nombre]
             fila = {"columna": nombre, "clase": columna.clase(), "validos": columna.contar(),
@@ -691,9 +702,9 @@ class Interprete(EvaVisitor):
             if fila["clase"] == "numero":
                 fila.update(media=columna.media(), desviacion=columna.desviacion(),
                             minimo=columna.minimo(), maximo=columna.maximo())
-            filas.append(fila)
-        return Tabla.de_registros(filas, ["columna", "clase", "validos", "faltantes", "distintos",
-                                          "media", "desviacion", "minimo", "maximo"])
+            filas.agregar(fila)
+        return Tabla.de_registros(filas, Lista(("columna", "clase", "validos", "faltantes", "distintos",
+                                          "media", "desviacion", "minimo", "maximo")))
 
     def visitEtapaProfecia(self, ctx):
         tabla = self._tabla_de_entrada(ctx)
@@ -711,7 +722,7 @@ class Interprete(EvaVisitor):
             raise ErrorSemantico(ctx.ENTERO().symbol, "VECINOS necesita un número de al menos 1.")
         # solo sirven de vecinas las filas sin faltantes, y una fila no es vecina de si misma
         completas = sum(1 for fila in tabla.registros()
-                        if all(fila[c] is not None for c in [objetivo, *predictoras]))
+                        if all(fila[c] is not None for c in Lista((objetivo, *predictoras))))
         if k > completas - 1:
             raise ErrorSemantico(ctx.ENTERO().symbol, f"VECINOS pide {k} pero la tabla solo tiene "
                                                        f"{completas} filas completas, así que cada fila "
@@ -784,7 +795,7 @@ class Interprete(EvaVisitor):
         return self._elemento(ctx.expresion(1), contenedor, self.visit(ctx.expresion(1)))
 
     def visitExprLista(self, ctx):
-        return [self.visit(e) for e in ctx.expresion()]
+        return Lista(self.visit(e) for e in ctx.expresion())
 
     def visitExprDiccionario(self, ctx):
         diccionario = {}
@@ -807,7 +818,7 @@ class Interprete(EvaVisitor):
             raise ErrorSemantico(ctx, f"las claves de un diccionario son textos o enteros y llegó {describir(clave)}.")
 
     def _elemento(self, ctx, contenedor, clave):
-        if isinstance(contenedor, (list, str)):
+        if isinstance(contenedor, (Lista, str)):
             return contenedor[self._posicion(ctx, contenedor, clave)]
         if isinstance(contenedor, dict):
             self._revisar_clave(ctx, clave)
@@ -820,7 +831,7 @@ class Interprete(EvaVisitor):
                 if clave not in contenedor.columnas:
                     raise ErrorSemantico(ctx, f"la columna '{clave}' no existe en la tabla."
                                          + sugerir(clave, contenedor.columnas))
-                return list(contenedor[clave].valores)
+                return Lista(contenedor[clave].valores)
             # tabla[0] es la primera fila, como un diccionario
             registros = contenedor.registros()
             return registros[self._posicion(ctx, registros, clave)]
@@ -840,7 +851,7 @@ class Interprete(EvaVisitor):
 
     def visitExprPotencia(self, ctx):
         a, b, _ = self._operandos(ctx)
-        if isinstance(a, list) or isinstance(b, list):
+        if isinstance(a, Lista) or isinstance(b, Lista):
             return self._con_listas(ctx, a, b, "^")
         self._exigir(ctx, "^", "numero", a, b)
         if isinstance(a, Columna) or isinstance(b, Columna):
@@ -858,14 +869,14 @@ class Interprete(EvaVisitor):
 
     def visitExprNegativo(self, ctx):
         valor = self.visit(ctx.expresion())
-        if isinstance(valor, list):
+        if isinstance(valor, Lista):
             return self._con_listas(ctx, valor, -1, "*")
         self._exigir(ctx, "-", "numero", valor)
         return -valor
 
     def visitExprMultiplicativa(self, ctx):
         a, b, operador = self._operandos(ctx)
-        if isinstance(a, list) or isinstance(b, list):
+        if isinstance(a, Lista) or isinstance(b, Lista):
             return self._con_listas(ctx, a, b, operador)
         self._exigir(ctx, operador, "numero", a, b)
         if operador == "*":
@@ -879,7 +890,7 @@ class Interprete(EvaVisitor):
         # el + tambien sirve para pegar textos
         if operador == "+" and "texto" in (clase_de(a), clase_de(b)) and encaja(a, "texto") and encaja(b, "texto"):
             return a + b
-        if isinstance(a, list) or isinstance(b, list):
+        if isinstance(a, Lista) or isinstance(b, Lista):
             return self._con_listas(ctx, a, b, operador)
         self._exigir(ctx, operador, "numero", a, b)
         return a + b if operador == "+" else a - b
@@ -928,35 +939,35 @@ class Interprete(EvaVisitor):
     def visitExprFiltrar(self, ctx):
         """filtrar(f, lista) deja los elementos con los que f da verdadero.
         Con una tabla, cada fila llega a f como un diccionario."""
-        args = [self.visit(e) for e in ctx.expresion()]
-        if len(args) != 2 or not isinstance(args[0], Funcion) or not isinstance(args[1], (list, Columna, Tabla)):
+        args = Lista(self.visit(e) for e in ctx.expresion())
+        if len(args) != 2 or not isinstance(args[0], Funcion) or not isinstance(args[1], (Lista, Columna, Tabla)):
             raise ErrorSemantico(ctx, "va así: filtrar(funcion, lista) o filtrar(funcion, tabla). "
                                       "Para filtrar una tabla con una condición: tabla |> filtrar donde ...")
 
         def cumple(elemento):
-            resultado = self._invocar(ctx, args[0], [elemento])
+            resultado = self._invocar(ctx, args[0], Lista((elemento,)))
             if not isinstance(resultado, bool):
                 raise ErrorSemantico(ctx, f"{args[0].nombre}() tiene que devolver verdadero o falso para "
                                           f"filtrar, y devolvió {describir(resultado)}.")
             return resultado
 
         if isinstance(args[1], Tabla):
-            return args[1].filtrar(Columna([cumple(fila) for fila in args[1].registros()]))
+            return args[1].filtrar(Columna(Lista(cumple(fila) for fila in args[1].registros())))
         if isinstance(args[1], Columna):
-            return [v for v in args[1].valores if v is not None and cumple(v)]
-        return [v for v in args[1] if cumple(v)]
+            return Lista(v for v in args[1].valores if v is not None and cumple(v))
+        return Lista(v for v in args[1] if cumple(v))
 
     def _llamada(self, ctx):
         nombre = ctx.ID().getText()
-        args = [self.visit(e) for e in ctx.expresion()]
+        args = Lista(self.visit(e) for e in ctx.expresion())
 
         simbolo = self.simbolos.buscar(nombre)
         if simbolo is not None and isinstance(simbolo.valor, Funcion):
             return self._invocar(ctx, simbolo.valor, args)
 
         if nombre in AGREGACIONES:
-            if len(args) == 1 and isinstance(args[0], list):
-                args = [Columna(args[0])]    # una lista se resume igual que una columna
+            if len(args) == 1 and isinstance(args[0], Lista):
+                args = Lista((Columna(args[0]),))    # una lista se resume igual que una columna
             if len(args) != 1 or not isinstance(args[0], Columna):
                 raise ErrorSemantico(ctx, f"{nombre}() necesita una columna o una lista, "
                                           f"por ejemplo {nombre}(tabla.columna).")
@@ -971,7 +982,7 @@ class Interprete(EvaVisitor):
 
         if nombre not in TODAS:
             raise ErrorSemantico(ctx, f"la función '{nombre}' no existe."
-                                 + sugerir(nombre, [*TODAS, *AGREGACIONES]))
+                                 + sugerir(nombre, Lista((*TODAS, *AGREGACIONES))))
         minimo, maximo = TODAS[nombre]
         if not minimo <= len(args) <= maximo:
             cuantos = str(minimo) if minimo == maximo else f"entre {minimo} y {maximo}"
@@ -995,7 +1006,7 @@ class Interprete(EvaVisitor):
         funcion = MATEMATICAS[nombre]
         valor, extra = args[0], args[1:]
         self._exigir(ctx, nombre + "()", "numero", *extra)
-        if isinstance(valor, list):
+        if isinstance(valor, Lista):
             return matrices.cada(valor, lambda v: funcion(v, *extra))
         self._exigir(ctx, nombre + "()", "numero", valor)
         if isinstance(valor, Columna):
@@ -1011,7 +1022,7 @@ class Interprete(EvaVisitor):
     def _lista(self, ctx, nombre, args):
         primero = args[0] if args else None
         if nombre == "longitud":
-            if isinstance(primero, (list, dict, str, Tabla, Columna)):
+            if isinstance(primero, (Lista, dict, str, Tabla, Columna)):
                 return len(primero)
             raise ValueError(f"necesita una lista, un diccionario, un texto o una tabla y llegó {describir(primero)}")
         if nombre == "aleatorio":
@@ -1034,50 +1045,50 @@ class Interprete(EvaVisitor):
                 raise ValueError("el paso no puede ser 0")
             if (hasta - desde) / paso > MAX_VUELTAS:
                 raise ValueError(f"la lista tendría más de {MAX_VUELTAS} números")
-            return list(range(desde, hasta + (1 if paso > 0 else -1), paso))
+            return Lista(range(desde, hasta + (1 if paso > 0 else -1), paso))
         if nombre == "texto":
             return texto_de(primero)
         if nombre == "numero":
             return self._a_numero(primero)
         if nombre == "tabla_de":
             if (not isinstance(primero, dict) or not primero
-                    or not all(isinstance(v, list) for v in primero.values())
+                    or not all(isinstance(v, Lista) for v in primero.values())
                     or len({len(v) for v in primero.values()}) != 1):
                 raise ValueError("necesita un diccionario de listas del mismo largo, "
                                  'por ejemplo tabla_de({"x": [1, 2], "y": [3, 4]})')
-            return Tabla([str(c) for c in primero], {str(c): v for c, v in primero.items()})
+            return Tabla(Lista(str(c) for c in primero), {str(c): v for c, v in primero.items()})
         if nombre == "columna":
             if not isinstance(primero, Tabla) or not isinstance(args[1], str):
                 raise ValueError('va así: columna(tabla, "nombre")')
             if args[1] not in primero.columnas:
                 raise ValueError(f"la columna '{args[1]}' no existe en la tabla")
-            return list(primero[args[1]].valores)
+            return Lista(primero[args[1]].valores)
         if nombre in ("claves", "valores"):
             if not isinstance(primero, dict):
                 raise ValueError(f"necesita un diccionario y llegó {describir(primero)}")
-            return list(primero.keys() if nombre == "claves" else primero.values())
+            return Lista(primero.keys() if nombre == "claves" else primero.values())
         if nombre == "contiene":
-            if isinstance(primero, str) and isinstance(args[1], str) or isinstance(primero, (list, dict)):
+            if isinstance(primero, str) and isinstance(args[1], str) or isinstance(primero, (Lista, dict)):
                 return args[1] in primero
             raise ValueError("busca dentro de una lista, un diccionario o un texto")
-        if not isinstance(primero, list):
+        if not isinstance(primero, Lista):
             raise ValueError(f"necesita una lista y llegó {describir(primero)}")
         if nombre == "agregar":
-            primero.append(args[1])
+            primero.agregar(args[1])
             return None
         if nombre == "sacar":
             if not primero:
                 raise ValueError("la lista está vacía")
-            return primero.pop(self._posicion(ctx, primero, args[1] if len(args) == 2 else -1))
+            return primero.sacar(self._posicion(ctx, primero, args[1] if len(args) == 2 else -1))
         if nombre == "ordenada":
             try:
-                return sorted(primero)
+                return ordenada(primero)
             except TypeError:
                 raise ValueError("no se puede ordenar una lista que mezcla tipos (números con textos, "
                                  "listas o nulos)")
         if nombre == "invertida":
             return primero[::-1]
-        if not isinstance(args[1], list):
+        if not isinstance(args[1], Lista):
             raise ValueError("une dos listas")
         return primero + args[1]   # unir
 
@@ -1087,9 +1098,9 @@ class Interprete(EvaVisitor):
             return valor
         if isinstance(valor, str):
             texto = valor.strip()
-            if re.fullmatch(r"[+-]?\d+", texto):
+            if es_entero_texto(texto):
                 return int(texto)
-            if re.fullmatch(r"[+-]?(\d+\.?\d*|\.\d+)", texto):
+            if es_real_texto(texto, con_exponente=False):
                 return float(texto)
         raise ValueError(f"no se pudo convertir {texto_de(valor, True)} en número")
 
@@ -1109,7 +1120,7 @@ class Interprete(EvaVisitor):
             decimales = args[1] if len(args) == 2 else 0
             if not matematica.es_entero(decimales):
                 raise ErrorSemantico(ctx, "los decimales de redondear() van como un número entero.")
-            if isinstance(valor, list):
+            if isinstance(valor, Lista):
                 funcion = matematica.absoluto if nombre == "absoluto" else lambda v: round(v, decimales)
                 try:
                     return matrices.cada(valor, funcion)

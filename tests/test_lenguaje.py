@@ -1,15 +1,21 @@
 """Fase 3 (segunda parte): vocabulario en espanol, ciclos, funciones, listas y diccionarios,
 y las librerias propias de matematicas, matrices y aprendizaje automatico."""
 
+import ast
 import math
 import random
+import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
 from evangelion import aprendizaje, matematica, matrices
 from evangelion.analizador import analizar
-from evangelion.tablas import Columna, Tabla
+from evangelion.archivos import con_barras, extension, nombre_archivo
+from evangelion.cli import main
+from evangelion.listas import Lista, lineas_de, ordenada, partir
+from evangelion.tablas import Columna, Tabla, es_entero_texto, es_real_texto
 
 from test_fase2 import CARGA, correr, datos, falla, valor  # noqa: F401  (datos es un fixture)
 
@@ -211,32 +217,28 @@ def test_matematicas_en_el_lenguaje(datos):
     assert t["x"].valores[0] is None and t["x"].valores[1] == pytest.approx(math.log(20))
 
 
-def test_ninguna_libreria_propia_importa_math():
-    for archivo in (RAIZ / "src" / "evangelion").glob("*.py"):
-        codigo = archivo.read_text(encoding="utf-8")
-        for prohibido in ("import math", "import struct", "import numpy", "import pandas",
-                          "import matplotlib", "import statistics", "import random", "import zlib"):
-            assert prohibido not in codigo, f"{archivo.name} usa {prohibido}"
-
-
 # --- Libreria de matrices -----------------------------------------------------------------
 
+def M(filas):
+    return Lista(Lista(f) for f in filas)
+
+
 def test_producto_transpuesta_e_identidad():
-    a = [[1, 2, 3], [4, 5, 6]]
+    a = M([[1, 2, 3], [4, 5, 6]])
     assert matrices.transpuesta(a) == [[1, 4], [2, 5], [3, 6]]
     assert matrices.producto(a, matrices.transpuesta(a)) == [[14, 32], [32, 77]]
-    assert matrices.producto(a, [1, 0, -1]) == [-2, -2]
+    assert matrices.producto(a, Lista([1, 0, -1])) == [-2, -2]
     assert matrices.producto(matrices.identidad(2), a) == a
 
 
 def test_determinante_inversa_y_resolver():
-    a = [[4, 7, 2], [3, 6, 1], [2, 5, 3]]
+    a = M([[4, 7, 2], [3, 6, 1], [2, 5, 3]])
     assert matrices.determinante(a) == pytest.approx(9)
     identidad = matrices.producto(a, matrices.inversa(a))
     for i in range(3):
         for j in range(3):
             assert identidad[i][j] == pytest.approx(1 if i == j else 0, abs=1e-12)
-    x = matrices.resolver(a, [1, 2, 3])
+    x = matrices.resolver(a, Lista([1, 2, 3]))
     assert matrices.producto(a, x) == pytest.approx([1, 2, 3])
 
 
@@ -258,10 +260,10 @@ def test_matrices_en_el_lenguaje():
 def test_regresion_encuentra_la_recta_exacta():
     t = Tabla(["x", "z", "y"], {"x": [1, 2, 3, 4, 5], "z": [0, 1, 0, 1, 1],
                                 "y": [2 * x + 3 * z + 1 for x, z in zip([1, 2, 3, 4, 5], [0, 1, 0, 1, 1])]})
-    modelo = aprendizaje.regresion(t, ["x", "z"], "y")
+    modelo = aprendizaje.regresion(t, Lista(["x", "z"]), "y")
     assert modelo["coeficientes"] == pytest.approx([1, 2, 3])
     assert modelo["r2"] == pytest.approx(1)
-    assert aprendizaje.predecir(modelo, [10, 1]) == pytest.approx(24)
+    assert aprendizaje.predecir(modelo, Lista([10, 1])) == pytest.approx(24)
 
 
 def test_regresion_con_ruido_se_acerca():
@@ -275,7 +277,7 @@ def test_regresion_con_ruido_se_acerca():
 def test_k_medias_separa_tres_grupos():
     puntos = [(0, 0), (0, 1), (1, 0), (20, 20), (21, 20), (20, 21), (40, 0), (41, 1), (40, 1)]
     t = Tabla(["x", "y"], {"x": [p[0] for p in puntos], "y": [p[1] for p in puntos]})
-    grupos = aprendizaje.grupos(t, ["x", "y"], 3)["grupo"].valores
+    grupos = aprendizaje.grupos(t, Lista(["x", "y"]), 3)["grupo"].valores
     assert grupos == [1, 1, 1, 2, 2, 2, 3, 3, 3]
 
 
@@ -288,9 +290,9 @@ def test_dividir_no_pierde_filas_y_se_repite():
 
 
 def test_metricas():
-    assert aprendizaje.error_cuadratico([1, 2, 3], [1, 2, 5]) == pytest.approx(4 / 3)
-    assert aprendizaje.r2([1, 2, 3], [1, 2, 3]) == 1
-    assert aprendizaje.exactitud(Columna(["a", "b", "a"]), ["a", "a", "a"]) == pytest.approx(2 / 3)
+    assert aprendizaje.error_cuadratico(Lista([1, 2, 3]), Lista([1, 2, 5])) == pytest.approx(4 / 3)
+    assert aprendizaje.r2(Lista([1, 2, 3]), Lista([1, 2, 3])) == 1
+    assert aprendizaje.exactitud(Columna(["a", "b", "a"]), Lista(["a", "a", "a"])) == pytest.approx(2 / 3)
 
 
 def test_modelos_en_el_lenguaje(datos):
@@ -399,8 +401,8 @@ def test_arbol_con_dos_variables_y_profundidad():
     puntos = [(x, y) for x in range(4) for y in range(4)]
     t = Tabla(["x", "y", "c"], {"x": [p[0] for p in puntos], "y": [p[1] for p in puntos],
                                 "c": ["si" if p[0] >= 2 and p[1] >= 2 else "no" for p in puntos]})
-    assert aprendizaje.arbol(t, ["x", "y"], "c", 1)["exactitud"] < 1
-    assert aprendizaje.arbol(t, ["x", "y"], "c", 2)["exactitud"] == 1
+    assert aprendizaje.arbol(t, Lista(["x", "y"]), "c", 1)["exactitud"] < 1
+    assert aprendizaje.arbol(t, Lista(["x", "y"]), "c", 2)["exactitud"] == 1
 
 
 def test_arbol_de_regresion_predice_promedios():
@@ -418,11 +420,11 @@ def test_gini():
 def test_perceptron_separa_y_la_perdida_baja():
     t = Tabla(["a", "b", "c"], {"a": [0, 1, 0, 1, 5, 6, 5, 6], "b": [0, 0, 1, 1, 5, 5, 6, 6],
                                 "c": [False] * 4 + [True] * 4})
-    modelo = aprendizaje.perceptron(t, ["a", "b"], "c", 0.5, 200)
+    modelo = aprendizaje.perceptron(t, Lista(["a", "b"]), "c", 0.5, 200)
     assert modelo["exactitud"] == 1
     assert modelo["perdidas"][-1] < modelo["perdidas"][0]
     assert all(b <= a + 1e-12 for a, b in zip(modelo["perdidas"], modelo["perdidas"][1:]))
-    assert aprendizaje.predecir(modelo, [5.5, 5.5]) is True
+    assert aprendizaje.predecir(modelo, Lista([5.5, 5.5])) is True
 
 
 def test_perceptron_gradiente_coincide_con_la_derivada_numerica():
@@ -449,15 +451,15 @@ def test_perceptron_necesita_dos_clases():
 def test_red_neuronal_aprende_xor():
     # XOR no se puede separar con una linea (un perceptron solo no puede), la red si
     t = Tabla(["a", "b", "c"], {"a": [0, 0, 1, 1] * 5, "b": [0, 1, 0, 1] * 5, "c": ["no", "si", "si", "no"] * 5})
-    red = aprendizaje.red_neuronal(t, ["a", "b"], "c", 4, 0.5, 400)
+    red = aprendizaje.red_neuronal(t, Lista(["a", "b"]), "c", 4, 0.5, 400)
     assert red["exactitud"] == 1
     assert red["perdida"] < red["perdidas"][0]
-    assert aprendizaje.perceptron(t, ["a", "b"], "c", 0.5, 400)["exactitud"] < 1
+    assert aprendizaje.perceptron(t, Lista(["a", "b"]), "c", 0.5, 400)["exactitud"] < 1
 
 
 def test_correlacion():
-    assert aprendizaje.correlacion([1, 2, 3], [2, 4, 6]) == pytest.approx(1)
-    assert aprendizaje.correlacion([1, 2, 3], [3, 2, 1]) == pytest.approx(-1)
+    assert aprendizaje.correlacion(Lista([1, 2, 3]), Lista([2, 4, 6])) == pytest.approx(1)
+    assert aprendizaje.correlacion(Lista([1, 2, 3]), Lista([3, 2, 1])) == pytest.approx(-1)
     assert "constante" in falla("x = correlacion([1, 1], [1, 2])")
 
 
@@ -590,9 +592,9 @@ def test_regresion_square_trick_llega_a_lo_mismo_que_la_formula_exacta():
     xs = [i / 4 for i in range(80)]
     ys = [3 + 1.5 * x + azar.gauss(0, 0.5) for x in xs]
     t = Tabla(["x", "y"], {"x": xs, "y": ys})
-    x = [[1, v] for v in xs]
+    x = M([1, v] for v in xs)
     xt = matrices.transpuesta(x)
-    exactos = matrices.resolver(matrices.producto(xt, x), matrices.producto(xt, ys))
+    exactos = matrices.resolver(matrices.producto(xt, x), matrices.producto(xt, Lista(ys)))
     modelo = aprendizaje.regresion(t, "x", "y", 0.01, 20000)
     assert modelo["coeficientes"] == pytest.approx(exactos, abs=0.15)
 
@@ -615,10 +617,10 @@ def test_regresion_que_se_desborda_avisa():
 def test_perceptron_con_cada_activacion_separa_dos_nubes(activacion):
     t = Tabla(["a", "b", "c"], {"a": [0, 1, 0, 1, 5, 6, 5, 6], "b": [0, 0, 1, 1, 5, 5, 6, 6],
                                 "c": ["no"] * 4 + ["si"] * 4})
-    modelo = aprendizaje.perceptron(t, ["a", "b"], "c", 0.1, 100, activacion)
+    modelo = aprendizaje.perceptron(t, Lista(["a", "b"]), "c", 0.1, 100, activacion)
     assert modelo["exactitud"] == 1 and modelo["activacion"] == activacion
-    assert aprendizaje.predecir(modelo, [5.5, 5.5]) == "si"
-    assert aprendizaje.predecir(modelo, [0.5, 0.2]) == "no"
+    assert aprendizaje.predecir(modelo, Lista([5.5, 5.5])) == "si"
+    assert aprendizaje.predecir(modelo, Lista([0.5, 0.2])) == "no"
 
 
 def test_perceptron_escalon_deja_de_corregir_cuando_ya_separa():
@@ -679,3 +681,189 @@ def test_errores_de_filtrar():
     assert "va así" in falla("z = filtrar(5, [1])")
     assert "va así" in falla("funcion f(x) { retornar verdadero }\nz = filtrar(f)")
     assert "palabra reservada" in analizar("filtrar = 1").errores[0].mensaje
+
+
+# --- Reglas del curso: sin importar librerias y sin las listas de Python ----------------------------
+
+ARCHIVOS_DEL_LENGUAJE = sorted((RAIZ / "src" / "evangelion").glob("*.py"))
+
+
+@pytest.mark.parametrize("archivo", ARCHIVOS_DEL_LENGUAJE, ids=lambda a: a.name)
+def test_el_lenguaje_no_importa_librerias_de_python(archivo):
+    """Solo se permiten archivos propios y antlr4, que es la herramienta que pide el curso."""
+    for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+        assert not isinstance(nodo, ast.Import), f"{archivo.name}:{nodo.lineno} importa {nodo.names[0].name}"
+        if isinstance(nodo, ast.ImportFrom) and nodo.level == 0:
+            assert nodo.module.startswith("antlr4"), f"{archivo.name}:{nodo.lineno} importa {nodo.module}"
+
+
+def test_solo_el_lanzador_importa_sys():
+    """Python solo entrega los argumentos de la linea de comandos a traves de sys."""
+    importados = [n.names[0].name for n in ast.walk(ast.parse((RAIZ / "run.py").read_text(encoding="utf-8")))
+                  if isinstance(n, ast.Import)]
+    assert importados == ["sys"]
+
+
+@pytest.mark.parametrize("archivo", ARCHIVOS_DEL_LENGUAJE, ids=lambda a: a.name)
+def test_el_lenguaje_no_crea_listas_de_python(archivo):
+    for nodo in ast.walk(ast.parse(archivo.read_text(encoding="utf-8"))):
+        donde = f"{archivo.name}:{getattr(nodo, 'lineno', '?')}"
+        assert not isinstance(nodo, (ast.List, ast.ListComp)), f"{donde} crea una lista de Python"
+        if isinstance(nodo, ast.Name):
+            assert nodo.id not in ("list", "sorted"), f"{donde} usa {nodo.id}"
+        if isinstance(nodo, ast.Attribute):
+            assert nodo.attr not in ("split", "rsplit", "splitlines", "sort"), f"{donde} usa .{nodo.attr}, que da una lista"
+
+
+def test_los_arreglos_del_lenguaje_son_lista_propia():
+    assert isinstance(v("r = [1, 2, 3]"), Lista)
+    assert isinstance(v("r = [1, 2] * 2"), Lista)
+    assert isinstance(v("r = rango(3)"), Lista)
+    assert isinstance(v("r = [[1], [2]]")[0], Lista)
+    assert isinstance(v('r = tabla_de({"x": [1, 2]})')["x"].valores, Lista)
+
+
+# --- La libreria de listas por dentro --------------------------------------------------------------
+
+def test_lista_agregar_leer_y_cambiar():
+    x = Lista()
+    for i in range(5):
+        x.agregar(i * 10)
+    assert len(x) == 5 and x[0] == 0 and x[4] == 40 and x[-1] == 40 and x[-5] == 0
+    x[2] = 99
+    assert x == [0, 10, 99, 30, 40]
+
+
+def test_lista_acceso_en_cualquier_orden_con_el_cursor():
+    x = Lista(range(100))
+    for i in (50, 51, 49, 0, 99, 98, 1, 50):
+        assert x[i] == i
+
+
+def test_lista_posiciones_que_no_existen():
+    x = Lista([1, 2])
+    for mala in (2, -3):
+        with pytest.raises(IndexError):
+            x[mala]
+    with pytest.raises(IndexError):
+        Lista().sacar()
+    with pytest.raises(TypeError):
+        x["a"]
+
+
+def test_lista_sacar_mantiene_los_enlaces():
+    x = Lista([1, 2, 3, 4])
+    assert x[2] == 3   # deja el cursor ahi
+    assert x.sacar(2) == 3 and x == [1, 2, 4] and x[2] == 4
+    assert x.sacar(0) == 1 and x == [2, 4]
+    assert x.sacar() == 4 and x.sacar() == 2 and len(x) == 0
+    x.agregar(7)
+    assert x == [7] and list(reversed(x)) == [7]
+
+
+def test_lista_tajadas_suma_y_repeticion():
+    x = Lista([1, 2, 3, 4])
+    assert x[1:3] == [2, 3] and x[:2] == [1, 2] and x[::2] == [1, 3] and x[::-1] == [4, 3, 2, 1]
+    assert x + Lista([5]) == [1, 2, 3, 4, 5] and len(x) == 4
+    assert Lista([0]) * 3 == [0, 0, 0] and 2 * Lista([1]) == [1, 1]
+
+
+def test_lista_comparar_buscar_y_recorrer():
+    x = Lista(["a", "b", "a"])
+    assert "b" in x and "z" not in x
+    assert x.contar("a") == 2 and x.indice("b") == 1
+    with pytest.raises(ValueError):
+        x.indice("z")
+    assert list(x) == ["a", "b", "a"] and list(reversed(x)) == ["a", "b", "a"]
+    assert x.invertida() == ["a", "b", "a"]
+    assert Lista([1, 2]) < Lista([1, 3]) and Lista([1]) < Lista([1, 0])
+    assert Lista([1]) != Lista([1, 2]) and Lista([1]) != "1"
+    with pytest.raises(TypeError):
+        {Lista(): 1}
+
+
+def test_lista_se_escribe_como_una_lista():
+    assert repr(Lista([1, "a", Lista([2])])) == "[1, 'a', [2]]"
+
+
+@pytest.mark.parametrize("datos_lista", [[], [1], [3, 1, 2], [5, 4, 3, 2, 1], [2, 1, 2, 1, 2], list(range(200, 0, -1))])
+def test_ordenada_contra_sorted(datos_lista):
+    assert ordenada(datos_lista) == sorted(datos_lista)
+    assert ordenada(datos_lista, reverse=True) == sorted(datos_lista, reverse=True)
+
+
+def test_ordenada_es_estable():
+    pares = [("b", 1), ("a", 1), ("c", 0), ("d", 1)]
+    assert ordenada(pares, key=lambda p: p[1]) == sorted(pares, key=lambda p: p[1])
+    assert ordenada(pares, key=lambda p: p[1], reverse=True) == sorted(pares, key=lambda p: p[1], reverse=True)
+
+
+def test_ordenada_con_tipos_mezclados_avisa():
+    with pytest.raises(TypeError):
+        ordenada([1, "a"])
+
+
+@pytest.mark.parametrize("texto", ["a b", "  a   b\n c ", "", "uno"])
+def test_partir_por_espacios_contra_split(texto):
+    assert partir(texto) == texto.split()
+
+
+@pytest.mark.parametrize("texto, separador", [("a,b", ","), (",a,", ","), ("", ","), ("a, b, c", ", ")])
+def test_partir_con_separador_contra_split(texto, separador):
+    assert partir(texto, separador) == texto.split(separador)
+
+
+@pytest.mark.parametrize("texto", ["a\nb", "a\r\nb\n", "", "\n", "a\n\nb"])
+def test_lineas_de_contra_splitlines(texto):
+    assert lineas_de(texto) == texto.splitlines()
+
+
+# --- Lo que antes hacian las librerias de Python ----------------------------------------------------
+
+@pytest.mark.parametrize("texto, esperado", [("42", True), ("+7", True), ("-3", True), ("", False), ("4a", False), ("3.5", False), ("-", False)])
+def test_reconocer_enteros(texto, esperado):
+    assert es_entero_texto(texto) is esperado
+
+
+@pytest.mark.parametrize("texto, esperado", [("3.5", True), ("-.5", True), ("2.", True), ("1e-3", True), ("2E5", True), ("7", True),
+                                             (".", False), ("", False), ("e5", False), ("1e", False), ("1.2.3", False), ("abc", False)])
+def test_reconocer_reales(texto, esperado):
+    assert es_real_texto(texto) is esperado
+
+
+def test_rutas_sin_pathlib():
+    assert nombre_archivo("a/b/c.csv") == "c.csv" and nombre_archivo("a\\b.csv") == "b.csv"
+    assert extension("a/B.CSV") == ".csv" and extension("a.b/c") == "" and extension(".oculto") == ""
+    assert con_barras("a\\b") == "a/b"
+
+
+def test_el_lenguaje_no_crea_carpetas_y_lo_dice(datos):
+    assert "no existe" in falla(CARGA + '\nSEELE t como "no_hay/x.csv"')
+    assert "no existe" in falla(CARGA + '\nHOLOGRAM barras de t { eje_x: piloto, eje_y: sincronizacion, archivo: "no_hay/x.png" }')
+
+
+def test_quitar_comillas_a_mano():
+    assert v('r = "a\\tb"') == "a\tb"
+    assert v('r = "di \\"hola\\""') == 'di "hola"'
+    assert v('r = "barra \\\\ sola"') == "barra \\ sola"
+
+
+def test_linea_de_comandos_sin_argparse(carpeta, capsys):
+    assert main([]) == 2 and "Uso:" in capsys.readouterr().out
+    assert main(["--inventada", "x.eva"]) == 2
+    assert main(["a.eva", "b.eva"]) == 2
+    assert main(["--svg"]) == 2
+    assert main(["no_existe.eva"]) == 2 and "No existe" in capsys.readouterr().out
+    programa = carpeta / "p.eva"
+    programa.write_text("x = 1", encoding="utf-8")
+    assert main([str(programa), "--tokens", "--arbol", "--lisp", "--simbolos", "--svg", str(carpeta / "a.svg")]) == 0
+    salida = capsys.readouterr().out
+    assert "TOKENS de p.eva" in salida and "TABLA DE SÍMBOLOS" in salida and (carpeta / "a.svg").exists()
+    assert main([str(programa), "--solo-analisis"]) == 0
+    assert main([str(programa), "--color"]) == 0 and "\033[" in capsys.readouterr().out
+
+
+def test_el_programa_corre_con_run_py(carpeta):
+    r = subprocess.run([sys.executable, str(RAIZ / "run.py"), str(RAIZ / "ejemplos" / "01_primera_prueba.eva")],
+                       capture_output=True, encoding="utf-8", errors="replace", cwd=carpeta)
+    assert r.returncode == 0 and "EVA - 01" in r.stdout and r.stderr == ""

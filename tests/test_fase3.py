@@ -149,6 +149,7 @@ def test_sin_datos_no_hay_grafica():
 # --- HOLOGRAM desde el lenguaje ----------------------------------------------------
 
 def test_hologram_guarda_donde_se_le_dice(datos):
+    (datos / "graficas").mkdir()
     interprete = correr(CARGA + '\nHOLOGRAM caja de t { eje_x: piloto, eje_y: sincronizacion, '
                                 'archivo: "graficas/caja.png", titulo: "Cajas", color: "verde" }')
     assert interprete.graficas == ["graficas/caja.png"]
@@ -193,6 +194,7 @@ def test_reemplazar_texto(datos):
 def test_el_caso_de_estudio_corre_y_deja_todo(tmp_path, monkeypatch, capsys):
     shutil.copytree(RAIZ / "datos", tmp_path / "datos")
     shutil.copytree(RAIZ / "caso_estudio", tmp_path / "caso_estudio", ignore=shutil.ignore_patterns("resultados"))
+    (tmp_path / "caso_estudio" / "resultados").mkdir(exist_ok=True)
     monkeypatch.chdir(tmp_path)
     assert main(["caso_estudio/co2_latam.eva"]) == 0
     salida = capsys.readouterr().out

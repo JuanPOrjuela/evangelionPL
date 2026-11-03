@@ -3,6 +3,7 @@
 from antlr4 import TerminalNode
 
 from .lienzo import escape
+from .listas import Lista
 
 
 def nombre_regla(nodo) -> str:
@@ -15,15 +16,15 @@ def _etiqueta(nodo) -> str:
     return nodo.getText() if isinstance(nodo, TerminalNode) else nombre_regla(nodo)
 
 
-def _hijos(nodo) -> list:
-    return [] if isinstance(nodo, TerminalNode) else (nodo.children or [])
+def _hijos(nodo) -> Lista:
+    return Lista() if isinstance(nodo, TerminalNode) else (nodo.children or Lista())
 
 
 def como_lisp(nodo) -> str:
     """Todo el arbol en una linea, con parentesis."""
     if isinstance(nodo, TerminalNode):
         return nodo.getText()
-    return "(" + " ".join([nombre_regla(nodo)] + [como_lisp(h) for h in _hijos(nodo)]) + ")"
+    return "(" + " ".join(Lista((nombre_regla(nodo),)) + Lista(como_lisp(h) for h in _hijos(nodo))) + ")"
 
 
 def como_texto(nodo, prefijo: str = "", ultimo: bool = True, raiz: bool = True) -> str:
@@ -50,8 +51,8 @@ def como_svg(raiz) -> str:
     """Dibuja el arbol: las hojas se reparten de izquierda a derecha y cada
     padre queda centrado sobre sus hijos."""
     posiciones = {}   # id(nodo) -> (x, nivel)
-    orden = []
-    cursor = [MARGEN]
+    orden = Lista()
+    cursor = Lista((MARGEN,))
 
     def ubicar(nodo, nivel):
         ancho = len(_etiqueta(nodo)) * ANCHO_LETRA + 14
@@ -68,7 +69,7 @@ def como_svg(raiz) -> str:
             cursor[0] = max(cursor[0], inicio + ancho)
             x = max(x, inicio + ancho / 2)
         posiciones[id(nodo)] = (x, nivel)
-        orden.append(nodo)
+        orden.agregar(nodo)
 
     ubicar(raiz, 0)
 
@@ -76,16 +77,16 @@ def como_svg(raiz) -> str:
     ancho_total = cursor[0] + MARGEN
     alto_total = niveles * ALTO_NIVEL + 40
 
-    lineas, textos = [], []
+    lineas, textos = Lista(), Lista()
     for nodo in orden:
         x, nivel = posiciones[id(nodo)]
         y = nivel * ALTO_NIVEL + 22
         for hijo in _hijos(nodo):
             hx, hnivel = posiciones[id(hijo)]
-            lineas.append(f'<line x1="{x:.1f}" y1="{y + 6:.1f}" x2="{hx:.1f}" '
+            lineas.agregar(f'<line x1="{x:.1f}" y1="{y + 6:.1f}" x2="{hx:.1f}" '
                           f'y2="{hnivel * ALTO_NIVEL + 10:.1f}"/>')
         clase = "hoja" if isinstance(nodo, TerminalNode) else "regla"
-        textos.append(f'<text class="{clase}" x="{x:.1f}" y="{y:.1f}">{escape(_etiqueta(nodo))}</text>')
+        textos.agregar(f'<text class="{clase}" x="{x:.1f}" y="{y:.1f}">{escape(_etiqueta(nodo))}</text>')
 
     return (
         f'<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 {ancho_total:.0f} {alto_total:.0f}" '

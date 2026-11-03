@@ -1,76 +1,96 @@
 """Linea de comandos: analiza un programa .eva y, si esta bien, lo ejecuta."""
 
-import argparse
-import sys
-from pathlib import Path
-
 from . import consola
 from .analizador import analizar, nombre_token
 from .arbol import como_lisp, como_svg, como_texto
+from .archivos import existe, nombre_archivo
 from .errores import ErrorSemantico, formatear
 from .interprete import Interprete
+from .listas import Lista
 
 
-def main(argv=None) -> int:
-    p = argparse.ArgumentParser(
-        prog="eva",
-        description="evangelionPL: un lenguaje para analizar datos con vocabulario de Evangelion.",
-    )
-    p.add_argument("archivo", help="programa .eva")
-    p.add_argument("--tokens", action="store_true", help="muestra los tokens (fase 1)")
-    p.add_argument("--arbol", action="store_true", help="muestra el árbol de análisis")
-    p.add_argument("--lisp", action="store_true", help="árbol en una sola línea con paréntesis")
-    p.add_argument("--svg", metavar="SALIDA", help="guarda el árbol como dibujo .svg")
-    p.add_argument("--simbolos", action="store_true", help="muestra la tabla de símbolos al terminar")
-    p.add_argument("--solo-analisis", action="store_true", help="revisa el programa pero no lo ejecuta")
-    args = p.parse_args(argv)
+AYUDA = """Uso: python run.py programa.eva [opciones]
 
-    consola.preparar_terminal()
+  --tokens         muestra los tokens (fase 1)
+  --arbol          muestra el árbol de análisis
+  --lisp           árbol en una sola línea con paréntesis
+  --svg SALIDA     guarda el árbol como dibujo .svg
+  --simbolos       muestra la tabla de símbolos al terminar
+  --solo-analisis  revisa el programa pero no lo ejecuta
+  --color          pinta los mensajes si la terminal lo permite"""
+INTERRUPTORES = ("--tokens", "--arbol", "--lisp", "--simbolos", "--solo-analisis", "--color")
 
-    ruta = Path(args.archivo)
-    if not ruta.is_file():
+
+def _leer_argumentos(argv):
+    """Devuelve (archivo, opciones que se pidieron, salida del svg), o None si algo no se entiende."""
+    archivo, opciones, svg = None, set(), None
+    pendientes = iter(argv)
+    for argumento in pendientes:
+        if argumento in INTERRUPTORES:
+            opciones.add(argumento)
+        elif argumento == "--svg":
+            svg = next(pendientes, None)
+            if svg is None:
+                return None
+        elif argumento.startswith("-") or archivo is not None:
+            return None
+        else:
+            archivo = argumento
+    return None if archivo is None else (archivo, opciones, svg)
+
+
+def main(argv=()) -> int:
+    leidos = _leer_argumentos(argv)
+    if leidos is None:
+        print(AYUDA)
+        return 2
+    ruta, opciones, svg = leidos
+    if "--color" in opciones:
+        consola.activar_color()
+
+    if not existe(ruta):
         print(f"No existe el archivo '{ruta}'.")
         return 2
+    nombre = nombre_archivo(ruta)
 
-    fuente = ruta.read_text(encoding="utf-8")
+    with open(ruta, encoding="utf-8") as archivo:
+        fuente = archivo.read()
     res = analizar(fuente)
 
-    if args.tokens:
-        print(f"TOKENS de {ruta.name}")
+    if "--tokens" in opciones:
+        print(f"TOKENS de {nombre}")
         print(f"{'#':>4}  {'LIN:COL':<8} {'TIPO':<18} LEXEMA")
         for i, t in enumerate(res.tokens, 1):
             print(f"{i:>4}  {f'{t.line}:{t.column + 1}':<8} {nombre_token(t.type):<18} {t.text}")
         print()
 
     if not res.valido:
-        print(consola.fallo(formatear(res.errores, fuente, ruta.name), res.errores[0].linea))
+        print(consola.fallo(formatear(res.errores, fuente, nombre), res.errores[0].linea))
         return 1
 
-    if args.arbol:
-        print(f"ÁRBOL DE ANÁLISIS de {ruta.name}")
+    if "--arbol" in opciones:
+        print(f"ÁRBOL DE ANÁLISIS de {nombre}")
         print(como_texto(res.arbol))
-    if args.lisp:
+    if "--lisp" in opciones:
         print(como_lisp(res.arbol) + "\n")
-    if args.svg:
-        Path(args.svg).write_text(como_svg(res.arbol), encoding="utf-8")
-        print(f"Árbol guardado en {args.svg}\n")
+    if svg:
+        with open(svg, "w", encoding="utf-8") as archivo:
+            archivo.write(como_svg(res.arbol))
+        print(f"Árbol guardado en {svg}\n")
 
     interprete = Interprete()
-    if not args.solo_analisis:
+    if "--solo-analisis" not in opciones:
         try:
             interprete.ejecutar(res.arbol)
         except ErrorSemantico as e:
-            print(consola.fallo(formatear([e.error], fuente, ruta.name), e.error.linea))
+            print(consola.fallo(formatear(Lista((e.error,)), fuente, nombre), e.error.linea))
             return 1
 
-    if args.simbolos:
+    if "--simbolos" in opciones:
         print("TABLA DE SÍMBOLOS")
         print(interprete.simbolos.como_texto() + "\n")
 
-    print(consola.exito(ruta.name, interprete.operacion, len(res.tokens),
+    print(consola.exito(nombre, interprete.operacion, len(res.tokens),
                         interprete.simbolos.nombres(), interprete.reportes, interprete.graficas))
     return 0
 
-
-if __name__ == "__main__":
-    sys.exit(main())

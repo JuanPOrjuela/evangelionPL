@@ -1,19 +1,18 @@
 """Errores del lenguaje: los juntamos y los pasamos a español."""
 
-from dataclasses import dataclass
-
 from antlr4 import Token
 from antlr4.error.ErrorListener import ErrorListener
 
 from .generado.EvaLexer import EvaLexer
+from .listas import Lista, lineas_de, partir
 
 
-@dataclass
 class ErrorEva:
-    fase: str      # lexico, sintactico o semantico
-    linea: int     # empieza en 1
-    columna: int   # empieza en 0, al mostrarla se le suma 1
-    mensaje: str
+    def __init__(self, fase: str, linea: int, columna: int, mensaje: str):
+        self.fase = fase         # lexico, sintactico o semantico
+        self.linea = linea       # empieza en 1
+        self.columna = columna   # empieza en 0, al mostrarla se le suma 1
+        self.mensaje = mensaje
 
     def __str__(self) -> str:
         return f"[{self.fase}] linea {self.linea}, columna {self.columna + 1}: {self.mensaje}"
@@ -59,17 +58,17 @@ class RecolectorDeErrores(ErrorListener):
 
     def __init__(self):
         super().__init__()
-        self.errores: list[ErrorEva] = []
+        self.errores: Lista[ErrorEva] = Lista()
 
     def syntaxError(self, recognizer, offendingSymbol, line, column, msg, e):
         texto = getattr(offendingSymbol, "text", None)
         # caso tipico: SEELE = ... (se quiso usar una reservada como variable)
         anterior = recognizer.getTokenStream().LT(-1)
         if texto == "=" and anterior is not None and anterior.text in RESERVADAS:
-            self.errores.append(ErrorEva("sintactico", anterior.line, anterior.column,
+            self.errores.agregar(ErrorEva("sintactico", anterior.line, anterior.column,
                                          _es_reservada(anterior.text)))
             return
-        self.errores.append(ErrorEva("sintactico", line, column, traducir(msg, texto)))
+        self.errores.agregar(ErrorEva("sintactico", line, column, traducir(msg, texto)))
 
 
 def _es_reservada(texto: str) -> str:
@@ -78,14 +77,14 @@ def _es_reservada(texto: str) -> str:
 
 
 def traducir(msg: str, texto) -> str:
-    crudo = msg.split("expecting", 1)[1] if "expecting" in msg else ""
+    crudo = msg.partition("expecting")[2]
 
     if texto in RESERVADAS and " ID" in crudo:
         return _es_reservada(texto)
     if msg.startswith(("mismatched input", "extraneous input")):
         return f"no se esperaba {_citar(texto)}. Aquí debería ir {_esperado(crudo)}."
     if msg.startswith("missing"):
-        falta = msg[len("missing"):].split(" at ")[0]
+        falta = msg[len("missing"):].partition(" at ")[0]
         return f"falta {_esperado(falta)} antes de {_citar(texto)}."
     if msg.startswith("no viable alternative"):
         return f"no entiendo la instrucción cerca de {_citar(texto)}."
@@ -102,7 +101,7 @@ def _esperado(crudo: str) -> str:
     crudo = crudo.strip()
     if crudo.startswith("{") and crudo.endswith("}"):
         crudo = crudo[1:-1]
-    opciones = [o.strip() for o in crudo.split(", ")]
+    opciones = Lista(o.strip() for o in partir(crudo, ", "))
 
     # Si ANTLR lista muchas opciones el mensaje no se entiende, mejor resumir
     if "TARGET" in opciones:
@@ -113,24 +112,24 @@ def _esperado(crudo: str) -> str:
     if len(opciones) > 8:
         return "un valor o una expresión"
 
-    opciones = [NOMBRES.get(o, o) for o in opciones]
+    opciones = Lista(NOMBRES.get(o, o) for o in opciones)
     if len(opciones) == 1:
         return opciones[0]
     return ", ".join(opciones[:-1]) + " o " + opciones[-1]
 
 
-def formatear(errores: list, fuente: str, archivo: str = "<entrada>") -> str:
+def formatear(errores: Lista, fuente: str, archivo: str = "<entrada>") -> str:
     """Cada error con su linea de codigo y una flecha debajo de la columna."""
-    lineas = fuente.splitlines()
-    partes = []
+    lineas = lineas_de(fuente)
+    partes = Lista()
     for err in errores:
-        partes.append(f"  Error {_fase(err.fase)} en {archivo}, línea {err.linea}, columna {err.columna + 1}")
-        partes.append(f"    {err.mensaje}")
+        partes.agregar(f"  Error {_fase(err.fase)} en {archivo}, línea {err.linea}, columna {err.columna + 1}")
+        partes.agregar(f"    {err.mensaje}")
         if 0 < err.linea <= len(lineas):
             codigo = lineas[err.linea - 1].replace("\t", " ")
-            partes.append(f"      {err.linea:>3} | {codigo}")
-            partes.append(f"          | {' ' * err.columna}^")
-        partes.append("")
+            partes.agregar(f"      {err.linea:>3} | {codigo}")
+            partes.agregar(f"          | {' ' * err.columna}^")
+        partes.agregar("")
     return "\n".join(partes).rstrip("\n")
 
 

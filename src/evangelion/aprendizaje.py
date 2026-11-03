@@ -16,6 +16,7 @@ modelo.coeficientes o modelo["r2"].
 """
 
 from . import matrices
+from .listas import Lista, ordenada
 from .matematica import Aleatorio, exp, ln, raiz, tanh
 from .tablas import Columna, Tabla, es_numero
 
@@ -23,15 +24,15 @@ MAX_VUELTAS = 100
 INTENTOS = 10
 
 
-def _lista_de_variables(variables) -> list:
+def _lista_de_variables(variables) -> Lista:
     if isinstance(variables, str):
-        return [variables]
-    if isinstance(variables, list) and variables and all(isinstance(v, str) for v in variables):
+        return Lista((variables,))
+    if isinstance(variables, Lista) and variables and all(isinstance(v, str) for v in variables):
         return variables
     raise ValueError('las variables van como un texto o una lista de textos, por ejemplo ["edad", "peso"]')
 
 
-def _revisar_columnas(tabla: Tabla, columnas: list, numericas: bool = True) -> None:
+def _revisar_columnas(tabla: Tabla, columnas: Lista, numericas: bool = True) -> None:
     if len(tabla) == 0:
         raise ValueError("la tabla está vacía")
     for c in columnas:
@@ -45,24 +46,24 @@ def _revisar_columnas(tabla: Tabla, columnas: list, numericas: bool = True) -> N
             raise ValueError(f"la columna '{c}' tiene que ser numérica")
 
 
-def _puntos(tabla: Tabla, variables: list) -> list:
+def _puntos(tabla: Tabla, variables: Lista) -> Lista:
     """Una lista por fila con los valores de las variables."""
-    return [[tabla[c].valores[i] for c in variables] for i in range(len(tabla))]
+    return Lista(Lista(tabla[c].valores[i] for c in variables) for i in range(len(tabla)))
 
 
-def _escala(puntos: list):
+def _escala(puntos: Lista):
     """Media y desviacion de cada variable, para que todas pesen igual en las distancias."""
     n, d = len(puntos), len(puntos[0])
-    medias = [sum(p[j] for p in puntos) / n for j in range(d)]
-    desviaciones = []
+    medias = Lista(sum(p[j] for p in puntos) / n for j in range(d))
+    desviaciones = Lista()
     for j in range(d):
         varianza = sum((p[j] - medias[j]) ** 2 for p in puntos) / n
-        desviaciones.append(raiz(varianza) or 1.0)  # una variable constante no se escala
+        desviaciones.agregar(raiz(varianza) or 1.0)  # una variable constante no se escala
     return medias, desviaciones
 
 
-def _escalar(puntos: list, medias: list, desviaciones: list) -> list:
-    return [[(p[j] - medias[j]) / desviaciones[j] for j in range(len(p))] for p in puntos]
+def _escalar(puntos: Lista, medias: Lista, desviaciones: Lista) -> Lista:
+    return Lista(Lista((p[j] - medias[j]) / desviaciones[j] for j in range(len(p))) for p in puntos)
 
 
 # --- Regresion lineal ------------------------------------------------------------
@@ -78,40 +79,40 @@ def regresion(tabla: Tabla, variables, objetivo: str, tasa: float = 0.01, epocas
     Las variables se escalan por dentro para que una tasa sirva con cualquier unidad, y
     al final los coeficientes se devuelven en las unidades originales."""
     variables = _lista_de_variables(variables)
-    _revisar_columnas(tabla, variables + [objetivo])
+    _revisar_columnas(tabla, variables + Lista((objetivo,)))
     _revisar_entrenamiento(tasa, epocas)
     if len(tabla) <= len(variables):
         raise ValueError(f"para {len(variables)} variables hacen falta más de {len(variables)} filas")
     puntos = _puntos(tabla, variables)
     medias, desviaciones = _escala(puntos)
     x = _escalar(puntos, medias, desviaciones)
-    y = list(tabla[objetivo].valores)
+    y = Lista(tabla[objetivo].valores)
     n, d = len(x), len(variables)
 
     azar = Aleatorio(semilla)
-    pesos = [azar.siguiente() - 0.5 for _ in range(d)]
+    pesos = Lista(azar.siguiente() - 0.5 for _ in range(d))
     sesgo = azar.siguiente() - 0.5
     cada = max(1, epocas // 200)    # cada cuantas epocas se anota el error
-    perdidas = []
+    perdidas = Lista()
     try:
         for epoca in range(epocas):
             i = azar.entero(0, n - 1)
-            diferencia = y[i] - (matrices.punto(pesos, x[i]) + sesgo)
+            diferencia = y[i] - (matrices.suma_de_productos(pesos, x[i]) + sesgo)
             for j in range(d):
                 pesos[j] += tasa * x[i][j] * diferencia
             sesgo += tasa * diferencia
             if epoca % cada == 0 or epoca == epocas - 1:
-                perdidas.append(sum((yi - matrices.punto(pesos, xi) - sesgo) ** 2
+                perdidas.agregar(sum((yi - matrices.suma_de_productos(pesos, xi) - sesgo) ** 2
                                     for xi, yi in zip(x, y)) / n)
     except OverflowError:
         raise ValueError("el entrenamiento se desbordó (los pesos crecieron sin control); "
                          "prueba con una tasa más pequeña")
 
     # de vuelta a las unidades originales: w_j / desviacion_j y el intercepto se corre
-    originales = [w / s for w, s in zip(pesos, desviaciones)]
+    originales = Lista(w / s for w, s in zip(pesos, desviaciones))
     intercepto = sesgo - sum(w * m for w, m in zip(originales, medias))
-    coeficientes = [intercepto] + originales
-    predichos = [matrices.punto([1] + p, coeficientes) for p in puntos]
+    coeficientes = Lista((intercepto,)) + originales
+    predichos = Lista(matrices.suma_de_productos(Lista((1,)) + p, coeficientes) for p in puntos)
     return {"tipo": "regresion", "variables": variables, "objetivo": objetivo,
             "coeficientes": coeficientes, "r2": r2(y, predichos), "tasa": tasa, "epocas": epocas,
             "perdidas": perdidas, "perdida": perdidas[-1], "cada": cada}
@@ -133,23 +134,23 @@ def predecir(modelo: dict, datos):
     if isinstance(datos, Tabla):
         _revisar_columnas(datos, variables)
         puntos = _puntos(datos, variables)
-        return datos.con_columna("prediccion", Columna([_predecir_uno(modelo, p) for p in puntos]))
-    punto = [datos] if es_numero(datos) else datos
+        return datos.con_columna("prediccion", Columna(Lista(_predecir_uno(modelo, p) for p in puntos)))
+    punto = Lista((datos,)) if es_numero(datos) else datos
     if not matrices.es_vector(punto) or len(punto) != len(variables):
         raise ValueError(f"el modelo usa {len(variables)} variables ({', '.join(variables)}) "
                          f"y hay que darle {len(variables)} números")
     return _predecir_uno(modelo, punto)
 
 
-def _predecir_uno(modelo: dict, punto: list):
+def _predecir_uno(modelo: dict, punto: Lista):
     if modelo["tipo"] == "regresion":
-        return matrices.punto([1] + punto, modelo["coeficientes"])
+        return matrices.suma_de_productos(Lista((1,)) + punto, modelo["coeficientes"])
     if modelo["tipo"] == "arbol":
         return _bajar_por_el_arbol(modelo["raiz"], dict(zip(modelo["variables"], punto)))
-    escalado = _escalar([punto], modelo["medias"], modelo["desviaciones"])[0]
+    escalado = _escalar(Lista((punto,)), modelo["medias"], modelo["desviaciones"])[0]
     if modelo["tipo"] == "perceptron":
         activacion = modelo["activacion"]
-        salida = _activar(activacion, matrices.punto(modelo["pesos"], escalado) + modelo["sesgo"])
+        salida = _activar(activacion, matrices.suma_de_productos(modelo["pesos"], escalado) + modelo["sesgo"])
         return modelo["clases"][1] if salida >= _corte(activacion) else modelo["clases"][0]
     salida = _adelante(modelo, escalado)[1]
     return modelo["clases"][max(range(len(salida)), key=lambda c: salida[c])]
@@ -183,47 +184,47 @@ def grupos(tabla: Tabla, variables, k: int, semilla: int = 42) -> Tabla:
     _, asignacion, centros = mejor
 
     # el grupo 1 es el de centro mas bajo en la primera variable, el 2 el siguiente, ...
-    orden = sorted(range(k), key=lambda c: centros[c])
+    orden = ordenada(range(k), key=lambda c: centros[c])
     numero = {c: i + 1 for i, c in enumerate(orden)}
-    return tabla.con_columna("grupo", Columna([numero[g] for g in asignacion]))
+    return tabla.con_columna("grupo", Columna(Lista(numero[g] for g in asignacion)))
 
 
-def _k_medias(puntos: list, centros: list) -> tuple:
+def _k_medias(puntos: Lista, centros: Lista) -> tuple:
     asignacion = None
     for _ in range(MAX_VUELTAS):
-        nueva = [min(range(len(centros)), key=lambda c: matrices.distancia(p, centros[c])) for p in puntos]
+        nueva = Lista(min(range(len(centros)), key=lambda c: matrices.distancia(p, centros[c])) for p in puntos)
         if nueva == asignacion:
             break
         asignacion = nueva
         for c in range(len(centros)):
-            miembros = [p for p, g in zip(puntos, asignacion) if g == c]
+            miembros = Lista(p for p, g in zip(puntos, asignacion) if g == c)
             if miembros:  # un grupo vacio deja su centro donde estaba
-                centros[c] = [sum(m[j] for m in miembros) / len(miembros) for j in range(len(miembros[0]))]
+                centros[c] = Lista(sum(m[j] for m in miembros) / len(miembros) for j in range(len(miembros[0])))
     return asignacion, centros
 
 
-def _centros_iniciales(puntos: list, k: int, azar: Aleatorio) -> list:
+def _centros_iniciales(puntos: Lista, k: int, azar: Aleatorio) -> Lista:
     """k-medias++: el primer centro al azar y cada siguiente con mas probabilidad
     entre mas lejos este de los centros que ya hay."""
-    centros = [puntos[azar.entero(0, len(puntos) - 1)]]
+    centros = Lista((puntos[azar.entero(0, len(puntos) - 1)],))
     while len(centros) < k:
-        pesos = [min(matrices.distancia(p, c) for c in centros) ** 2 for p in puntos]
+        pesos = Lista(min(matrices.distancia(p, c) for c in centros) ** 2 for p in puntos)
         total = sum(pesos)
         if total == 0:  # todos los puntos que quedan son iguales a algun centro
-            centros.append(puntos[len(centros)])
+            centros.agregar(puntos[len(centros)])
             continue
         meta, acumulado = azar.siguiente() * total, 0
         for p, peso in zip(puntos, pesos):
             acumulado += peso
             if acumulado >= meta and peso > 0:
-                centros.append(p)
+                centros.agregar(p)
                 break
-    return [list(c) for c in centros]
+    return Lista(Lista(c) for c in centros)
 
 
 # --- Entrenamiento y prueba -------------------------------------------------------------
 
-def dividir(tabla: Tabla, proporcion: float = 0.8, semilla: int = 42) -> list:
+def dividir(tabla: Tabla, proporcion: float = 0.8, semilla: int = 42) -> Lista:
     """Baraja las filas y devuelve [entrenamiento, prueba]."""
     if not es_numero(proporcion) or not 0 < proporcion < 1:
         raise ValueError("la proporción va entre 0 y 1, por ejemplo 0.8")
@@ -231,7 +232,7 @@ def dividir(tabla: Tabla, proporcion: float = 0.8, semilla: int = 42) -> list:
         raise ValueError("hacen falta al menos 2 filas para dividir la tabla")
     orden = Aleatorio(semilla).barajar(range(len(tabla)))
     corte = min(max(round(len(tabla) * proporcion), 1), len(tabla) - 1)
-    return [tabla._tomar(sorted(orden[:corte])), tabla._tomar(sorted(orden[corte:]))]
+    return Lista((tabla._tomar(ordenada(orden[:corte])), tabla._tomar(ordenada(orden[corte:]))))
 
 
 # --- Metricas ---------------------------------------------------------------------------
@@ -239,7 +240,7 @@ def dividir(tabla: Tabla, proporcion: float = 0.8, semilla: int = 42) -> list:
 def _pareja(reales, predichos) -> tuple:
     reales = reales.valores if isinstance(reales, Columna) else reales
     predichos = predichos.valores if isinstance(predichos, Columna) else predichos
-    if not isinstance(reales, list) or not isinstance(predichos, list):
+    if not isinstance(reales, Lista) or not isinstance(predichos, Lista):
         raise ValueError("las métricas comparan dos columnas o dos listas")
     if len(reales) != len(predichos) or not reales:
         raise ValueError(f"los reales y los predichos tienen que tener el mismo largo "
@@ -277,16 +278,16 @@ def exactitud(reales, predichos):
 def arbol(tabla: Tabla, variables, objetivo: str, profundidad: int = 4) -> dict:
     variables = _lista_de_variables(variables)
     _revisar_columnas(tabla, variables)
-    _revisar_columnas(tabla, [objetivo], numericas=False)
+    _revisar_columnas(tabla, Lista((objetivo,)), numericas=False)
     if not isinstance(profundidad, int) or isinstance(profundidad, bool) or not 1 <= profundidad <= 20:
         raise ValueError("la profundidad va entre 1 y 20")
-    etiquetas = list(tabla[objetivo].valores)
+    etiquetas = Lista(tabla[objetivo].valores)
     clase = "regresion" if all(es_numero(e) for e in etiquetas) else "clasificacion"
-    filas = [dict(zip(variables, p)) for p in _puntos(tabla, variables)]
+    filas = Lista(dict(zip(variables, p)) for p in _puntos(tabla, variables))
     raiz_arbol = _crecer(filas, etiquetas, variables, clase, profundidad)
     modelo = {"tipo": "arbol", "clase": clase, "variables": variables, "objetivo": objetivo,
               "profundidad": profundidad, "raiz": raiz_arbol}
-    predichos = [_bajar_por_el_arbol(raiz_arbol, f) for f in filas]
+    predichos = Lista(_bajar_por_el_arbol(raiz_arbol, f) for f in filas)
     if clase == "clasificacion":
         modelo["exactitud"] = exactitud(etiquetas, predichos)
     else:
@@ -294,32 +295,32 @@ def arbol(tabla: Tabla, variables, objetivo: str, profundidad: int = 4) -> dict:
     return modelo
 
 
-def gini(etiquetas: list) -> float:
+def gini(etiquetas: Lista) -> float:
     """1 - suma de p^2: es 0 cuando todas las etiquetas son iguales."""
     n = len(etiquetas)
     return 1 - sum((c / n) ** 2 for c in _contar(etiquetas).values())
 
 
-def _contar(etiquetas: list) -> dict:
+def _contar(etiquetas: Lista) -> dict:
     conteo = {}
     for e in etiquetas:
         conteo[e] = conteo.get(e, 0) + 1
     return conteo
 
 
-def _varianza(valores: list) -> float:
+def _varianza(valores: Lista) -> float:
     media = sum(valores) / len(valores)
     return sum((v - media) ** 2 for v in valores) / len(valores)
 
 
-def _hoja(etiquetas: list, clase: str) -> dict:
+def _hoja(etiquetas: Lista, clase: str) -> dict:
     if clase == "regresion":
         return {"valor": sum(etiquetas) / len(etiquetas), "filas": len(etiquetas)}
     conteo = _contar(etiquetas)
     return {"valor": max(conteo, key=lambda e: conteo[e]), "filas": len(etiquetas)}
 
 
-def _crecer(filas: list, etiquetas: list, variables: list, clase: str, profundidad: int) -> dict:
+def _crecer(filas: Lista, etiquetas: Lista, variables: Lista, clase: str, profundidad: int) -> dict:
     impureza = gini if clase == "clasificacion" else _varianza
     actual = impureza(etiquetas)
     if profundidad == 0 or actual == 0 or len(etiquetas) < 4:
@@ -327,22 +328,22 @@ def _crecer(filas: list, etiquetas: list, variables: list, clase: str, profundid
     mejor = None   # (impureza ponderada, variable, umbral)
     n = len(etiquetas)
     for variable in variables:
-        valores = sorted(set(f[variable] for f in filas))
+        valores = ordenada(set(f[variable] for f in filas))
         for a, b in zip(valores, valores[1:]):
             umbral = (a + b) / 2
-            izquierda = [e for f, e in zip(filas, etiquetas) if f[variable] <= umbral]
-            derecha = [e for f, e in zip(filas, etiquetas) if f[variable] > umbral]
+            izquierda = Lista(e for f, e in zip(filas, etiquetas) if f[variable] <= umbral)
+            derecha = Lista(e for f, e in zip(filas, etiquetas) if f[variable] > umbral)
             ponderada = (len(izquierda) * impureza(izquierda) + len(derecha) * impureza(derecha)) / n
             if mejor is None or ponderada < mejor[0]:
                 mejor = (ponderada, variable, umbral)
     if mejor is None or mejor[0] >= actual - 1e-12:
         return _hoja(etiquetas, clase)
     _, variable, umbral = mejor
-    izquierda = [i for i, f in enumerate(filas) if f[variable] <= umbral]
-    derecha = [i for i, f in enumerate(filas) if f[variable] > umbral]
-    si = _crecer([filas[i] for i in izquierda], [etiquetas[i] for i in izquierda],
+    izquierda = Lista(i for i, f in enumerate(filas) if f[variable] <= umbral)
+    derecha = Lista(i for i, f in enumerate(filas) if f[variable] > umbral)
+    si = _crecer(Lista(filas[i] for i in izquierda), Lista(etiquetas[i] for i in izquierda),
                  variables, clase, profundidad - 1)
-    sino = _crecer([filas[i] for i in derecha], [etiquetas[i] for i in derecha],
+    sino = _crecer(Lista(filas[i] for i in derecha), Lista(etiquetas[i] for i in derecha),
                    variables, clase, profundidad - 1)
     # poda: si los dos lados terminan diciendo lo mismo, la pregunta sobra
     if clase == "clasificacion" and "valor" in si and "valor" in sino and si["valor"] == sino["valor"]:
@@ -356,24 +357,24 @@ def _bajar_por_el_arbol(nodo: dict, fila: dict):
     return nodo["valor"]
 
 
-def reglas(modelo: dict) -> list:
+def reglas(modelo: dict) -> Lista:
     """El arbol escrito como reglas de texto, una por hoja."""
     if not isinstance(modelo, dict) or modelo.get("tipo") != "arbol":
         raise ValueError("reglas() necesita un modelo hecho con arbol()")
-    resultado = []
+    resultado = Lista()
 
     def recorrer(nodo, limites):
         """limites guarda, por variable, el mayor 'mas que' y el menor 'hasta' del camino."""
         if "valor" in nodo:
             valor = nodo["valor"]
             texto = f"{valor:.4g}" if isinstance(valor, float) else str(valor)
-            partes = []
+            partes = Lista()
             for variable, (desde, hasta) in limites.items():
                 if desde is not None:
-                    partes.append(f"{variable} > {desde:.4g}")
+                    partes.agregar(f"{variable} > {desde:.4g}")
                 if hasta is not None:
-                    partes.append(f"{variable} <= {hasta:.4g}")
-            resultado.append(f"si {' y '.join(partes) or 'siempre'} -> {texto} ({nodo['filas']} filas)")
+                    partes.agregar(f"{variable} <= {hasta:.4g}")
+            resultado.agregar(f"si {' y '.join(partes) or 'siempre'} -> {texto} ({nodo['filas']} filas)")
             return
         variable, umbral = nodo["variable"], nodo["umbral"]
         desde, hasta = limites.get(variable, (None, None))
@@ -437,12 +438,12 @@ def perceptron(tabla: Tabla, variables, objetivo: str, tasa: float = 0.1, epocas
     Grokking ML cap. 5: fila por fila, si se equivoca, w_j = w_j + tasa * (y - y_predicho) * x_j."""
     variables = _lista_de_variables(variables)
     _revisar_columnas(tabla, variables)
-    _revisar_columnas(tabla, [objetivo], numericas=False)
+    _revisar_columnas(tabla, Lista((objetivo,)), numericas=False)
     _revisar_entrenamiento(tasa, epocas)
     if activacion not in ACTIVACIONES:
         raise ValueError(f"la activación '{activacion}' no existe; usa {', '.join(ACTIVACIONES)}")
-    etiquetas = list(tabla[objetivo].valores)
-    clases = sorted(set(etiquetas), key=str)
+    etiquetas = Lista(tabla[objetivo].valores)
+    clases = ordenada(set(etiquetas), key=str)
     if len(clases) != 2:
         raise ValueError(f"el perceptrón separa exactamente 2 clases y el objetivo tiene {len(clases)}; "
                          "para más clases usa red_neuronal() o arbol()")
@@ -450,25 +451,25 @@ def perceptron(tabla: Tabla, variables, objetivo: str, tasa: float = 0.1, epocas
     medias, desviaciones = _escala(puntos)
     x = _escalar(puntos, medias, desviaciones)
     baja = -1 if activacion == "tanh" else 0    # tanh va de -1 a 1
-    y = [1 if e == clases[1] else baja for e in etiquetas]
+    y = Lista(1 if e == clases[1] else baja for e in etiquetas)
     n, d = len(x), len(variables)
 
     azar = Aleatorio(42)
-    pesos, sesgo, perdidas = [0.0] * d, 0.0, []
+    pesos, sesgo, perdidas = Lista((0.0,)) * d, 0.0, Lista()
     for _ in range(epocas):
         if activacion == "escalon":
             errores = 0
             for i in azar.barajar(range(n)):
-                diferencia = y[i] - _activar("escalon", matrices.punto(pesos, x[i]) + sesgo)
+                diferencia = y[i] - _activar("escalon", matrices.suma_de_productos(pesos, x[i]) + sesgo)
                 if diferencia != 0:
                     errores += 1
-                    pesos = [w + tasa * diferencia * xj for w, xj in zip(pesos, x[i])]
+                    pesos = Lista(w + tasa * diferencia * xj for w, xj in zip(pesos, x[i]))
                     sesgo += tasa * diferencia
-            perdidas.append(errores / n)    # que fraccion de filas tuvo que corregir
+            perdidas.agregar(errores / n)    # que fraccion de filas tuvo que corregir
             continue
-        gradiente, gradiente_sesgo, perdida = [0.0] * d, 0.0, 0.0
+        gradiente, gradiente_sesgo, perdida = Lista((0.0,)) * d, 0.0, 0.0
         for fila, real in zip(x, y):
-            salida = _activar(activacion, matrices.punto(pesos, fila) + sesgo)
+            salida = _activar(activacion, matrices.suma_de_productos(pesos, fila) + sesgo)
             if activacion == "sigmoide":
                 error = salida - real
                 perdida += _entropia(salida, real)
@@ -479,15 +480,15 @@ def perceptron(tabla: Tabla, variables, objetivo: str, tasa: float = 0.1, epocas
             for j in range(d):
                 gradiente[j] += error * fila[j]
             gradiente_sesgo += error
-        pesos = [w - tasa * g / n for w, g in zip(pesos, gradiente)]
+        pesos = Lista(w - tasa * g / n for w, g in zip(pesos, gradiente))
         sesgo -= tasa * gradiente_sesgo / n
-        perdidas.append(perdida / n)
+        perdidas.agregar(perdida / n)
 
     modelo = {"tipo": "perceptron", "activacion": activacion, "variables": variables,
               "objetivo": objetivo, "clases": clases, "pesos": pesos, "sesgo": sesgo,
               "medias": medias, "desviaciones": desviaciones, "perdidas": perdidas,
               "perdida": perdidas[-1]}
-    modelo["exactitud"] = exactitud(etiquetas, [_predecir_uno(modelo, p) for p in puntos])
+    modelo["exactitud"] = exactitud(etiquetas, Lista(_predecir_uno(modelo, p) for p in puntos))
     return modelo
 
 
@@ -503,12 +504,12 @@ def red_neuronal(tabla: Tabla, variables, objetivo: str, ocultas: int = 5, tasa:
     y cada peso se mueve un paso en contra de su derivada, fila por fila."""
     variables = _lista_de_variables(variables)
     _revisar_columnas(tabla, variables)
-    _revisar_columnas(tabla, [objetivo], numericas=False)
+    _revisar_columnas(tabla, Lista((objetivo,)), numericas=False)
     _revisar_entrenamiento(tasa, epocas)
     if not isinstance(ocultas, int) or isinstance(ocultas, bool) or not 1 <= ocultas <= 100:
         raise ValueError("las neuronas ocultas van entre 1 y 100")
-    etiquetas = list(tabla[objetivo].valores)
-    clases = sorted(set(etiquetas), key=str)
+    etiquetas = Lista(tabla[objetivo].valores)
+    clases = ordenada(set(etiquetas), key=str)
     if len(clases) < 2:
         raise ValueError("el objetivo necesita al menos 2 clases distintas")
     puntos = _puntos(tabla, variables)
@@ -520,11 +521,11 @@ def red_neuronal(tabla: Tabla, variables, objetivo: str, ocultas: int = 5, tasa:
     azar = Aleatorio(semilla)
     modelo = {"tipo": "red_neuronal", "variables": variables, "objetivo": objetivo, "clases": clases,
               "medias": medias, "desviaciones": desviaciones,
-              "w1": [[azar.siguiente() - 0.5 for _ in range(d)] for _ in range(ocultas)],
-              "b1": [0.0] * ocultas,
-              "w2": [[azar.siguiente() - 0.5 for _ in range(ocultas)] for _ in range(c)],
-              "b2": [0.0] * c}
-    perdidas = []
+              "w1": Lista(Lista(azar.siguiente() - 0.5 for _ in range(d)) for _ in range(ocultas)),
+              "b1": Lista((0.0,)) * ocultas,
+              "w2": Lista(Lista(azar.siguiente() - 0.5 for _ in range(ocultas)) for _ in range(c)),
+              "b2": Lista((0.0,)) * c}
+    perdidas = Lista()
     for _ in range(epocas):
         perdida = 0.0
         # en cada epoca las filas van en otro orden, para que el orden del archivo
@@ -532,34 +533,34 @@ def red_neuronal(tabla: Tabla, variables, objetivo: str, ocultas: int = 5, tasa:
         for i in azar.barajar(range(len(x))):
             fila, etiqueta = x[i], etiquetas[i]
             a1, p = _adelante(modelo, fila)
-            real = [1 if clase == etiqueta else 0 for clase in clases]
-            perdida += -ln(max(p[clases.index(etiqueta)], 1e-12))
-            dz2 = [pk - yk for pk, yk in zip(p, real)]
-            dz1 = [sum(modelo["w2"][k][h] * dz2[k] for k in range(c)) * a1[h] * (1 - a1[h])
-                   for h in range(ocultas)]
-            for k in range(c):
-                for h in range(ocultas):
-                    modelo["w2"][k][h] -= tasa * dz2[k] * a1[h]
-                modelo["b2"][k] -= tasa * dz2[k]
-            for h in range(ocultas):
-                for j in range(d):
-                    modelo["w1"][h][j] -= tasa * dz1[h] * fila[j]
-                modelo["b1"][h] -= tasa * dz1[h]
-        perdidas.append(perdida / len(x))
+            real = Lista(1 if clase == etiqueta else 0 for clase in clases)
+            perdida += -ln(max(p[clases.indice(etiqueta)], 1e-12))
+            dz2 = Lista(pk - yk for pk, yk in zip(p, real))
+            dz1 = Lista(sum(wk[h] * dk for wk, dk in zip(modelo["w2"], dz2)) * ah * (1 - ah)
+                        for h, ah in enumerate(a1))
+            for k, (wk, dk) in enumerate(zip(modelo["w2"], dz2)):
+                for h, ah in enumerate(a1):
+                    wk[h] -= tasa * dk * ah
+                modelo["b2"][k] -= tasa * dk
+            for h, (wh, dh) in enumerate(zip(modelo["w1"], dz1)):
+                for j, xj in enumerate(fila):
+                    wh[j] -= tasa * dh * xj
+                modelo["b1"][h] -= tasa * dh
+        perdidas.agregar(perdida / len(x))
     modelo["perdidas"] = perdidas
     modelo["perdida"] = perdidas[-1]
-    modelo["exactitud"] = exactitud(etiquetas, [_predecir_uno(modelo, p) for p in puntos])
+    modelo["exactitud"] = exactitud(etiquetas, Lista(_predecir_uno(modelo, p) for p in puntos))
     return modelo
 
 
-def _adelante(modelo: dict, fila: list) -> tuple:
+def _adelante(modelo: dict, fila: Lista) -> tuple:
     """Pasa una fila por la red y devuelve (activaciones ocultas, probabilidad de cada clase)."""
-    a1 = [sigmoide(matrices.punto(w, fila) + b) for w, b in zip(modelo["w1"], modelo["b1"])]
-    z2 = [matrices.punto(w, a1) + b for w, b in zip(modelo["w2"], modelo["b2"])]
+    a1 = Lista(sigmoide(matrices.suma_de_productos(w, fila) + b) for w, b in zip(modelo["w1"], modelo["b1"]))
+    z2 = Lista(matrices.suma_de_productos(w, a1) + b for w, b in zip(modelo["w2"], modelo["b2"]))
     mayor = max(z2)   # se resta el mayor para que exp() no se desborde; softmax no cambia
-    potencias = [exp(z - mayor) for z in z2]
+    potencias = Lista(exp(z - mayor) for z in z2)
     total = sum(potencias)
-    return a1, [v / total for v in potencias]
+    return a1, Lista(v / total for v in potencias)
 
 
 # --- Correlacion -----------------------------------------------------------------------------

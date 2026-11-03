@@ -12,5 +12,6 @@ sys.path.insert(0, str(RAIZ / "src"))
 def carpeta(tmp_path, monkeypatch):
     """Carpeta temporal con una copia de datos/, para no ensuciar el proyecto."""
     shutil.copytree(RAIZ / "datos", tmp_path / "datos")
+    (tmp_path / "salidas").mkdir()     # el lenguaje no crea carpetas: sin librerias no puede
     monkeypatch.chdir(tmp_path)
     return tmp_path

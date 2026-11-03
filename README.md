@@ -245,7 +245,12 @@ tabla) y sus variables son locales: no cambian las de afuera. Puede llamarse a s
 misma (recursión, hasta 100 niveles).
 
 Los ejemplos `06_listas_ciclos_y_matematicas.eva` y `07_matrices_y_modelos.eva`
-muestran todo esto.
+muestran esto por partes, y `08_todo_el_lenguaje.eva` reúne en un solo programa todo
+lo que sabe hacer el lenguaje:
+
+```
+python run.py ejemplos/08_todo_el_lenguaje.eva
+```
 
 Las etapas se encadenan con `|>` y ninguna cambia la tabla original: cada una
 devuelve una tabla nueva. Los comentarios empiezan con `#`.
@@ -293,6 +298,8 @@ grammar/              Eva.g4 (reglas léxicas y sintácticas juntas)
 src/evangelion/
     analizador.py     fase 1: tokens y árbol
     interprete.py     fase 2: Visitor que revisa y ejecuta el programa
+    listas.py         librería propia: la lista enlazada (el arreglo del lenguaje) y merge sort
+    archivos.py       lo poco que hace falta saber de una ruta
     tablas.py         librería propia: tablas, columnas, estadísticas y CSV
     matematica.py     librería propia: raíz, exp, ln, seno, coseno, piso, azar...
     matrices.py       librería propia: vectores y matrices (como NumPy)
@@ -343,6 +350,15 @@ algoritmos siguen los libros *Grokking Machine Learning* (Serrano, caps. 3, 5, 6
 9, 10 y apéndice B) y *Grokking Artificial Intelligence Algorithms* (Hurbans,
 caps. 8 y 9).
 
+El lenguaje no importa ninguna librería de Python y no usa las listas de Python:
+los arreglos son una lista enlazada propia (`listas.py`), hecha de nodos que apuntan al
+anterior y al siguiente. Hay pruebas que revisan el código y fallan si eso deja de
+cumplirse. La única importación es `sys` en `run.py`, porque Python solo entrega por ahí
+lo que se escribe en la línea de comandos. Como sin librerías no se pueden crear
+carpetas, la carpeta donde se guarda un resultado ya tiene que existir (si no, el error lo
+dice); `salidas/` viene en el repositorio. Las funciones que trae Python, como `sum`,
+`max` y `min`, sí se usan.
+
 Lo único que viene de afuera es el runtime de ANTLR4, que es la herramienta que
 pide el curso, y pytest, que solo se usa para correr las pruebas. Las dependencias
 están en `pyproject.toml`.
@@ -353,7 +369,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 334 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 423 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco

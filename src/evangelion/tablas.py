@@ -5,12 +5,34 @@ donde None significa "dato faltante". Ninguna operacion cambia la tabla
 original: todas devuelven una nueva.
 """
 
-import re
+from .listas import Lista, ordenada
 
-ENTERO = re.compile(r"[+-]?\d+")
-REAL = re.compile(r"[+-]?(\d+\.?\d*|\.\d+)([eE][+-]?\d+)?")
 PALABRAS_BOOLEANAS = {"verdadero": True, "si": True, "true": True,
                       "falso": False, "no": False, "false": False}
+
+
+def _son_digitos(texto: str) -> bool:
+    return texto != "" and all(c in "0123456789" for c in texto)
+
+
+def es_entero_texto(texto: str) -> bool:
+    """42, +7, -3"""
+    return _son_digitos(texto[1:] if texto[:1] in ("+", "-") else texto)
+
+
+def es_real_texto(texto: str, con_exponente: bool = True) -> bool:
+    """3.5, -.5, 2., 1e-3"""
+    numero = texto[1:] if texto[:1] in ("+", "-") else texto
+    if con_exponente:
+        base, hay_e, exponente = numero.replace("E", "e").partition("e")
+        if hay_e and not es_entero_texto(exponente):
+            return False
+    else:
+        base = numero
+    entera, punto, decimales = base.partition(".")
+    if not punto:
+        return _son_digitos(entera)
+    return (_son_digitos(entera) and (decimales == "" or _son_digitos(decimales))) or (entera == "" and _son_digitos(decimales))
 
 
 def formatear(valor, decimales: int = 2) -> str:
@@ -32,10 +54,10 @@ def es_numero(valor) -> bool:
 def congelar(valor):
     """Una version que se puede meter en un set: las listas y los diccionarios
     (que Python no deja guardar en un set) pasan a tuplas."""
-    if isinstance(valor, list):
+    if isinstance(valor, Lista):
         return ("lista",) + tuple(congelar(v) for v in valor)
     if isinstance(valor, dict):
-        return ("diccionario",) + tuple(sorted(((str(k), congelar(v)) for k, v in valor.items()), key=str))
+        return ("diccionario",) + tuple(ordenada(((str(k), congelar(v)) for k, v in valor.items()), key=str))
     return valor
 
 
@@ -44,14 +66,14 @@ def congelar(valor):
 class Columna:
 
     def __init__(self, valores, nombre: str = ""):
-        self.valores = list(valores)
+        self.valores = Lista(valores)
         self.nombre = nombre
 
     def __len__(self) -> int:
         return len(self.valores)
 
-    def presentes(self) -> list:
-        return [v for v in self.valores if v is not None]
+    def presentes(self) -> Lista:
+        return Lista(v for v in self.valores if v is not None)
 
     def clase(self) -> str:
         """numero, texto o booleano, segun lo que tenga adentro. Vacia es 'nulo'."""
@@ -67,18 +89,18 @@ class Columna:
     # Operaciones fila por fila. El otro lado puede ser una columna o un solo valor.
 
     def _con(self, otro, funcion, si_falta=None) -> "Columna":
-        otros = otro.valores if isinstance(otro, Columna) else [otro] * len(self.valores)
-        resultado = []
+        otros = otro.valores if isinstance(otro, Columna) else Lista((otro,)) * len(self.valores)
+        resultado = Lista()
         for a, b in zip(self.valores, otros):
             if a is None or b is None:
-                resultado.append(si_falta)
+                resultado.agregar(si_falta)
                 continue
             try:
                 r = funcion(a, b)
             except (ZeroDivisionError, OverflowError):
                 r = None   # una division por cero deja el dato como faltante
             # la raiz de un negativo daria un complejo: tampoco es un dato valido
-            resultado.append(None if isinstance(r, complex) else r)
+            resultado.agregar(None if isinstance(r, complex) else r)
         return Columna(resultado)
 
     def __add__(self, otro): return self._con(otro, lambda a, b: a + b)
@@ -108,7 +130,7 @@ class Columna:
     def __ror__(self, otro): return self._con(otro, lambda a, b: b or a)
 
     def _cada(self, funcion) -> "Columna":
-        return Columna([None if v is None else funcion(v) for v in self.valores])
+        return Columna(Lista(None if v is None else funcion(v) for v in self.valores))
 
     def __neg__(self): return self._cada(lambda v: -v)
     def __invert__(self): return self._cada(lambda v: not v)
@@ -120,10 +142,10 @@ class Columna:
     def reemplazar(self, viejo, nuevo): return self._cada(lambda v: v.replace(viejo, nuevo))
 
     def es_nulo(self) -> "Columna":
-        return Columna([v is None for v in self.valores])
+        return Columna(Lista(v is None for v in self.valores))
 
     def rellenar(self, valor) -> "Columna":
-        return Columna([valor if v is None else v for v in self.valores])
+        return Columna(Lista(valor if v is None else v for v in self.valores))
 
     def convertir(self, tipo: str) -> "Columna":
         """Pasa la columna a entero, real, texto o booleano. Si un valor no
@@ -149,7 +171,7 @@ class Columna:
         return sum(presentes) / len(presentes) if presentes else None
 
     def mediana(self):
-        ordenados = sorted(self.presentes())
+        ordenados = ordenada(self.presentes())
         n = len(ordenados)
         if n == 0:
             return None
@@ -199,13 +221,13 @@ CONVERSORES = {
 class Tabla:
 
     def __init__(self, columnas, datos):
-        self.columnas = list(columnas)
-        self._datos = {c: list(datos[c]) for c in self.columnas}
+        self.columnas = Lista(columnas)
+        self._datos = {c: Lista(datos[c]) for c in self.columnas}
 
     @classmethod
     def de_registros(cls, registros, columnas) -> "Tabla":
         """Arma la tabla a partir de una lista de diccionarios, uno por fila."""
-        return cls(columnas, {c: [r.get(c) for r in registros] for c in columnas})
+        return cls(columnas, {c: Lista(r.get(c) for r in registros) for c in columnas})
 
     def __len__(self) -> int:
         return len(self._datos[self.columnas[0]]) if self.columnas else 0
@@ -213,66 +235,65 @@ class Tabla:
     def __getitem__(self, nombre: str) -> Columna:
         return Columna(self._datos[nombre], nombre)
 
-    def filas(self) -> list:
-        return [[self._datos[c][i] for c in self.columnas] for i in range(len(self))]
+    def filas(self) -> Lista:
+        return Lista(Lista(self._datos[c][i] for c in self.columnas) for i in range(len(self)))
 
-    def registros(self) -> list:
-        return [dict(zip(self.columnas, fila)) for fila in self.filas()]
+    def registros(self) -> Lista:
+        return Lista(dict(zip(self.columnas, fila)) for fila in self.filas())
 
     def _tomar(self, indices) -> "Tabla":
-        return Tabla(self.columnas, {c: [self._datos[c][i] for i in indices] for c in self.columnas})
+        return Tabla(self.columnas, {c: Lista(self._datos[c][i] for i in indices) for c in self.columnas})
 
     def seleccionar(self, columnas) -> "Tabla":
         return Tabla(columnas, self._datos)
 
     def sin_columnas(self, columnas) -> "Tabla":
-        return self.seleccionar([c for c in self.columnas if c not in columnas])
+        return self.seleccionar(Lista(c for c in self.columnas if c not in columnas))
 
     def renombrar(self, cambios: dict) -> "Tabla":
-        nuevas = [cambios.get(c, c) for c in self.columnas]
+        nuevas = Lista(cambios.get(c, c) for c in self.columnas)
         return Tabla(nuevas, {cambios.get(c, c): self._datos[c] for c in self.columnas})
 
     def con_columna(self, nombre: str, valores) -> "Tabla":
         """Agrega la columna, o la reemplaza si ya existia. Un solo valor se repite en todas las filas."""
         datos = dict(self._datos)
-        datos[nombre] = valores.valores if isinstance(valores, Columna) else [valores] * len(self)
-        columnas = self.columnas if nombre in self.columnas else self.columnas + [nombre]
+        datos[nombre] = valores.valores if isinstance(valores, Columna) else Lista((valores,)) * len(self)
+        columnas = self.columnas if nombre in self.columnas else self.columnas + Lista((nombre,))
         return Tabla(columnas, datos)
 
     def filtrar(self, condicion: Columna) -> "Tabla":
-        return self._tomar([i for i, cumple in enumerate(condicion.valores) if cumple is True])
+        return self._tomar(Lista(i for i, cumple in enumerate(condicion.valores) if cumple is True))
 
     def primeras(self, n: int) -> "Tabla":
         return self._tomar(range(min(n, len(self))))
 
     def ordenar(self, columnas, ascendentes) -> "Tabla":
         """Ordena por varias columnas. Los faltantes siempre quedan al final."""
-        indices = list(range(len(self)))
+        indices = Lista(range(len(self)))
         # se ordena de la ultima columna a la primera: como sort no desordena
         # los empates, al final manda la primera
-        for columna, ascendente in reversed(list(zip(columnas, ascendentes))):
+        for columna, ascendente in reversed(Lista(zip(columnas, ascendentes))):
             valores = self._datos[columna]
-            con_dato = [i for i in indices if valores[i] is not None]
-            sin_dato = [i for i in indices if valores[i] is None]
-            con_dato.sort(key=lambda i: valores[i], reverse=not ascendente)
-            indices = con_dato + sin_dato
+            con_dato = Lista(i for i in indices if valores[i] is not None)
+            sin_dato = Lista(i for i in indices if valores[i] is None)
+            indices = ordenada(con_dato, key=lambda i: valores[i], reverse=not ascendente) + sin_dato
         return self._tomar(indices)
 
     def sin_duplicados(self, columnas=None) -> "Tabla":
         """Deja la primera fila de cada combinacion repetida."""
         columnas = columnas or self.columnas
-        vistas, indices = set(), []
+        vistas, indices = set(), Lista()
         for i in range(len(self)):
             clave = tuple(congelar(self._datos[c][i]) for c in columnas)
             if clave not in vistas:
                 vistas.add(clave)
-                indices.append(i)
+                indices.agregar(i)
         return self._tomar(indices)
 
     def sin_faltantes(self, columnas=None) -> "Tabla":
         columnas = columnas or self.columnas
-        return self._tomar([i for i in range(len(self))
-                            if all(self._datos[c][i] is not None for c in columnas)])
+        return self._tomar(Lista(i for i in range(len(self))
+                            if all(self._datos[c][i] is not None for c in columnas)))
 
     def resumir(self, claves, calculos) -> "Tabla":
         """Agrupa por las claves y calcula un resumen de cada grupo.
@@ -284,20 +305,20 @@ class Tabla:
         grupos = {}
         for i in range(len(self)):
             clave = tuple(self._datos[c][i] for c in claves)
-            grupos.setdefault(clave, []).append(i)
+            grupos.setdefault(clave, Lista()).agregar(i)
         if not claves:
-            grupos = {(): list(range(len(self)))}
+            grupos = {(): Lista(range(len(self)))}
 
-        registros = []
+        registros = Lista()
         for clave, indices in grupos.items():
             grupo = self._tomar(indices)
             registro = dict(zip(claves, clave))
             for nombre, funcion, columna in calculos:
                 registro[nombre] = len(grupo) if columna is None else getattr(grupo[columna], funcion)()
-            registros.append(registro)
-        return Tabla.de_registros(registros, list(claves) + [nombre for nombre, _, _ in calculos])
+            registros.agregar(registro)
+        return Tabla.de_registros(registros, Lista(claves) + Lista(nombre for nombre, _, _ in calculos))
 
-    def predecir_knn(self, objetivo: str, predictoras: list, k: int) -> "Columna":
+    def predecir_knn(self, objetivo: str, predictoras: Lista, k: int) -> "Columna":
         """Predice la columna `objetivo` para cada fila con el algoritmo de los k
         vecinos mas cercanos, usando distancia euclidiana sobre las `predictoras`
         normalizadas a [0, 1]. Es leave-one-out: cada fila se predice con las demas
@@ -322,96 +343,95 @@ class Tabla:
             minimo, amplitud = rangos[columna]
             return (valor - minimo) / amplitud
 
-        vectores = [[normalizar(i, columna) for columna in predictoras] for i in range(len(self))]
+        vectores = Lista(Lista(normalizar(i, columna) for columna in predictoras) for i in range(len(self)))
         objetivos = self._datos[objetivo]
         es_numerico = self[objetivo].clase() == "numero"
 
         # solo sirven de vecinas las filas con todas las predictoras y el objetivo presentes
-        candidatos = [i for i in range(len(self))
-                     if objetivos[i] is not None and None not in vectores[i]]
+        candidatos = Lista(i for i in range(len(self))
+                     if objetivos[i] is not None and None not in vectores[i])
 
-        predicciones = []
+        predicciones = Lista()
         for i in range(len(self)):
             if None in vectores[i]:
-                predicciones.append(None)   # sin predictoras completas no se puede predecir
+                predicciones.agregar(None)   # sin predictoras completas no se puede predecir
                 continue
-            distancias = []
+            distancias = Lista()
             for j in candidatos:
                 if j == i:
                     continue   # leave-one-out: una fila nunca es vecina de si misma
                 suma = sum((a - b) ** 2 for a, b in zip(vectores[i], vectores[j]))
-                distancias.append((suma ** 0.5, objetivos[j]))
-            distancias.sort(key=lambda par: par[0])
-            vecinos = [valor for _, valor in distancias[:k]]
+                distancias.agregar((suma ** 0.5, objetivos[j]))
+            vecinos = Lista(valor for _, valor in ordenada(distancias, key=lambda par: par[0])[:k])
             if not vecinos:
-                predicciones.append(None)
+                predicciones.agregar(None)
             elif es_numerico:
-                predicciones.append(Columna(vecinos).media())
+                predicciones.agregar(Columna(vecinos).media())
             else:
                 conteo = {}
                 for valor in vecinos:
                     conteo[valor] = conteo.get(valor, 0) + 1
-                predicciones.append(max(conteo, key=conteo.get))
+                predicciones.agregar(max(conteo, key=conteo.get))
         return Columna(predicciones, nombre=f"{objetivo}_prediccion")
 
     def como_texto(self) -> str:
         """La tabla lista para imprimir: numeros a la derecha y textos a la izquierda."""
-        bloques = []
+        bloques = Lista()
         for nombre in self.columnas:
             columna = self[nombre]
-            celdas = [formatear(v) for v in columna.valores]
+            celdas = Lista(formatear(v) for v in columna.valores)
             ancho = max(len(nombre), *(len(c) for c in celdas)) if celdas else len(nombre)
             alinear = str.rjust if columna.clase() == "numero" else str.ljust
-            bloques.append([alinear(nombre, ancho)] + [alinear(c, ancho) for c in celdas])
+            bloques.agregar(Lista((alinear(nombre, ancho),)) + Lista(alinear(c, ancho) for c in celdas))
         return "\n".join("  ".join(linea).rstrip() for linea in zip(*bloques))
 
 
 # --- Archivos CSV --------------------------------------------------------------
 
-def partir_csv(texto: str, separador: str = ",") -> list:
+def partir_csv(texto: str, separador: str = ",") -> Lista:
     """Parte el texto en filas y campos. Lo que va entre comillas dobles puede
     traer el separador o saltos de linea, y "" es una comilla escrita."""
-    filas, fila, campo = [], [], []
+    filas, fila, campo = Lista(), Lista(), Lista()
     entre_comillas = False
     i = 0
     while i < len(texto):
         c = texto[i]
         if entre_comillas:
             if c == '"' and texto[i + 1:i + 2] == '"':
-                campo.append('"')
+                campo.agregar('"')
                 i += 1
             elif c == '"':
                 entre_comillas = False
             else:
-                campo.append(c)
+                campo.agregar(c)
         elif c == '"':
             entre_comillas = True
         elif texto.startswith(separador, i):
-            fila.append("".join(campo))
-            campo = []
+            fila.agregar("".join(campo))
+            campo = Lista()
             i += len(separador) - 1
         elif c in "\r\n":
             if c == "\r" and texto[i + 1:i + 2] == "\n":
                 i += 1
-            fila.append("".join(campo))
-            filas.append(fila)
-            fila, campo = [], []
+            fila.agregar("".join(campo))
+            filas.agregar(fila)
+            fila, campo = Lista(), Lista()
         else:
-            campo.append(c)
+            campo.agregar(c)
         i += 1
     if campo or fila:
-        fila.append("".join(campo))
-        filas.append(fila)
-    return [f for f in filas if f != [""]]   # las lineas en blanco no cuentan
+        fila.agregar("".join(campo))
+        filas.agregar(fila)
+    return Lista(f for f in filas if f != Lista(("",)))   # las lineas en blanco no cuentan
 
 
-def inferir(textos: list) -> list:
+def inferir(textos: Lista) -> Lista:
     """Decide si una columna es de enteros, de reales o de texto. Vacio = faltante."""
-    limpios = [t.strip() for t in textos]
-    for patron, convertir in ((ENTERO, int), (REAL, float)):
-        if all(t == "" or patron.fullmatch(t) for t in limpios):
-            return [None if t == "" else convertir(t) for t in limpios]
-    return [None if t == "" else t for t in textos]
+    limpios = Lista(t.strip() for t in textos)
+    for patron, convertir in ((es_entero_texto, int), (es_real_texto, float)):
+        if all(t == "" or patron(t) for t in limpios):
+            return Lista(None if t == "" else convertir(t) for t in limpios)
+    return Lista(None if t == "" else t for t in textos)
 
 
 def leer_csv(ruta, separador: str = ",", codificacion: str = "utf-8", encabezado: bool = True) -> Tabla:
@@ -423,16 +443,16 @@ def leer_csv(ruta, separador: str = ",", codificacion: str = "utf-8", encabezado
         raise ValueError("el archivo está vacío")
 
     if encabezado:
-        nombres, filas = [n.strip() for n in filas[0]], filas[1:]
+        nombres, filas = Lista(n.strip() for n in filas[0]), filas[1:]
     else:
-        nombres = [f"col{i + 1}" for i in range(len(filas[0]))]
+        nombres = Lista(f"col{i + 1}" for i in range(len(filas[0])))
     if len(set(nombres)) != len(nombres):
         raise ValueError("hay nombres de columna repetidos")
     for numero, fila in enumerate(filas, start=2 if encabezado else 1):
         if len(fila) != len(nombres):
             raise ValueError(f"la fila {numero} trae {len(fila)} datos y se esperaban {len(nombres)}")
 
-    return Tabla(nombres, {nombre: inferir([fila[i] for fila in filas])
+    return Tabla(nombres, {nombre: inferir(Lista(fila[i] for fila in filas))
                            for i, nombre in enumerate(nombres)})
 
 
@@ -445,7 +465,7 @@ def escribir_csv(tabla: Tabla, ruta, decimales: int = 4) -> None:
             texto = '"' + texto.replace('"', '""') + '"'
         return texto
 
-    lineas = [tabla.columnas] + tabla.filas()
+    lineas = Lista((tabla.columnas,)) + tabla.filas()
     with open(ruta, "w", encoding="utf-8", newline="") as archivo:
         for linea in lineas:
             archivo.write(",".join(celda(v) for v in linea) + "\n")

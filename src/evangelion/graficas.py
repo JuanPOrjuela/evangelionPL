@@ -5,11 +5,10 @@ escalas, los ejes, la leyenda y las figuras. Las filas a las que les falta algun
 dato de los ejes se saltan.
 """
 
-from dataclasses import dataclass
-from pathlib import Path
-
+from .archivos import extension
 from .fuente import ALTO, ancho_texto
 from .lienzo import LienzoPNG, LienzoSVG, color_rgb
+from .listas import Lista, ordenada
 from .matematica import piso, piso_log10, techo, techo_log2
 from .tablas import Columna, es_numero, formatear
 
@@ -22,28 +21,22 @@ NUMERICOS = {"barras": ("eje_y",), "lineas": ("eje_y",), "histograma": ("eje_x",
              "dispersion": ("eje_x", "eje_y"), "caja": ("eje_y",)}
 
 # Morado del EVA-01, naranja, verde del EVA-01, rojo del EVA-02, azul del EVA-00...
-PALETA = ["#5b3a8e", "#e8710a", "#2a9d8f", "#c0392b", "#3b6fb6",
-          "#8c6d1f", "#d4539e", "#6a8a2e", "#7f7f7f", "#17becf", "#a0522d", "#1f3a5f"]
+PALETA = Lista(("#5b3a8e", "#e8710a", "#2a9d8f", "#c0392b", "#3b6fb6",
+          "#8c6d1f", "#d4539e", "#6a8a2e", "#7f7f7f", "#17becf", "#a0522d", "#1f3a5f"))
 COLORES = {"morado": "#5b3a8e", "naranja": "#e8710a", "verde": "#2a9d8f", "rojo": "#c0392b",
            "azul": "#3b6fb6", "amarillo": "#d4a017", "rosado": "#d4539e", "gris": "#6b6b6b",
            "negro": "#222222", "cafe": "#8c6d1f"}
 TEXTO, SUAVE, REJILLA, EJE, FONDO = "#222222", "#555555", "#e4e4e4", "#444444", "#ffffff"
 
 
-@dataclass
 class Grafica:
-    tipo: str
-    x: Columna = None
-    y: Columna = None
-    serie: Columna = None
-    titulo: str = ""
-    etiqueta_x: str = None
-    etiqueta_y: str = None
-    color: str = None
-    intervalos: int = None
-    ancho: int = 960
-    alto: int = 600
-    leyenda: bool = True
+    def __init__(self, tipo: str, x: Columna = None, y: Columna = None, serie: Columna = None, titulo: str = "",
+                 etiqueta_x: str = None, etiqueta_y: str = None, color: str = None, intervalos: int = None,
+                 ancho: int = 960, alto: int = 600, leyenda: bool = True):
+        self.tipo, self.x, self.y, self.serie = tipo, x, y, serie
+        self.titulo, self.etiqueta_x, self.etiqueta_y = titulo, etiqueta_x, etiqueta_y
+        self.color, self.intervalos = color, intervalos
+        self.ancho, self.alto, self.leyenda = ancho, alto, leyenda
 
 
 def color_de(texto: str):
@@ -63,7 +56,7 @@ def aclarar(color: str, cuanto: float = 0.6) -> str:
 
 def guardar(grafica: Grafica, ruta) -> int:
     """Dibuja la grafica en el formato que diga la extension. Devuelve cuantas filas uso."""
-    clase = LienzoSVG if Path(ruta).suffix.lower() == ".svg" else LienzoPNG
+    clase = LienzoSVG if extension(ruta) == ".svg" else LienzoPNG
     lienzo, usadas = dibujar(grafica, clase)
     lienzo.guardar(ruta)
     return usadas
@@ -81,15 +74,15 @@ def dibujar(grafica: Grafica, clase=LienzoPNG):
 
 # --- Datos ----------------------------------------------------------------------
 
-def _filas_completas(g: Grafica) -> list:
+def _filas_completas(g: Grafica) -> Lista:
     """Filas (x, y, serie) sin faltantes en las columnas que la grafica usa."""
-    columnas = [c for c in (g.x, g.y, g.serie) if c is not None]
+    columnas = Lista(c for c in (g.x, g.y, g.serie) if c is not None)
     largo = len(columnas[0])
-    filas = []
+    filas = Lista()
     for i in range(largo):
         fila = tuple(c.valores[i] if c is not None else None for c in (g.x, g.y, g.serie))
         if all(c.valores[i] is not None for c in columnas):
-            filas.append(fila)
+            filas.agregar(fila)
     return filas
 
 
@@ -99,15 +92,15 @@ def etiqueta(valor) -> str:
     return formatear(valor)
 
 
-def _unicos(valores) -> list:
-    vistos = []
+def _unicos(valores) -> Lista:
+    vistos = Lista()
     for v in valores:
         if v not in vistos:
-            vistos.append(v)
+            vistos.agregar(v)
     return vistos
 
 
-def cuantil(ordenados: list, q: float) -> float:
+def cuantil(ordenados: Lista, q: float) -> float:
     """Cuantil con interpolacion lineal entre los dos datos vecinos."""
     posicion = (len(ordenados) - 1) * q
     abajo = piso(posicion)
@@ -115,7 +108,7 @@ def cuantil(ordenados: list, q: float) -> float:
     return ordenados[abajo] + (ordenados[arriba] - ordenados[abajo]) * (posicion - abajo)
 
 
-def marcas(minimo: float, maximo: float, cuantas: int = 5) -> list:
+def marcas(minimo: float, maximo: float, cuantas: int = 5) -> Lista:
     """Valores redondos para las marcas de un eje (pasos de 1, 2, 2,5 o 5 por potencia de 10)."""
     if minimo == maximo:
         minimo, maximo = (minimo - 1, maximo + 1) if minimo != 0 else (0, 1)
@@ -124,7 +117,7 @@ def marcas(minimo: float, maximo: float, cuantas: int = 5) -> list:
     paso = next(m * potencia for m in (1, 2, 2.5, 5, 10) if m * potencia >= crudo)
     inicio = piso(minimo / paso + 1e-9) * paso
     fin = techo(maximo / paso - 1e-9) * paso
-    return [inicio + k * paso for k in range(round((fin - inicio) / paso) + 1)]
+    return Lista(inicio + k * paso for k in range(round((fin - inicio) / paso) + 1))
 
 
 def numero(valor: float, paso: float) -> str:
@@ -162,17 +155,17 @@ class Marco:
 
     def _leyenda(self, series, colores, y) -> int:
         """Los nombres de las series en renglones centrados debajo del titulo."""
-        piezas = [(etiqueta(s), c) for s, c in zip(series, colores)]
-        renglones, actual, ancho_actual = [], [], 0
+        piezas = Lista((etiqueta(s), c) for s, c in zip(series, colores))
+        renglones, actual, ancho_actual = Lista(), Lista(), 0
         limite = self.lienzo.ancho - 60
         for texto, color in piezas:
             ancho = 18 + ancho_texto(texto, 2) + 22
             if actual and ancho_actual + ancho > limite:
-                renglones.append((actual, ancho_actual))
-                actual, ancho_actual = [], 0
-            actual.append((texto, color, ancho))
+                renglones.agregar((actual, ancho_actual))
+                actual, ancho_actual = Lista(), 0
+            actual.agregar((texto, color, ancho))
             ancho_actual += ancho
-        renglones.append((actual, ancho_actual))
+        renglones.agregar((actual, ancho_actual))
         for piezas_renglon, total in renglones:
             x = (self.lienzo.ancho - total + 22) / 2
             for texto, color, ancho in piezas_renglon:
@@ -187,7 +180,7 @@ class Marco:
         self.marcas_y = marcas(minimo, maximo)
         self.y_min, self.y_max = self.marcas_y[0], self.marcas_y[-1]
         paso = self.marcas_y[1] - self.marcas_y[0] if len(self.marcas_y) > 1 else 1
-        textos = [numero(v, paso) for v in self.marcas_y]
+        textos = Lista(numero(v, paso) for v in self.marcas_y)
         self.izq = 34 + max(ancho_texto(t, 2) for t in textos) + 12
         self._textos_y = textos
         self.etiqueta_y = etiqueta_eje
@@ -201,19 +194,19 @@ class Marco:
         self.x_min, self.x_max = minimo - holgura, maximo + holgura
         todas = marcas(self.x_min, self.x_max, 8)
         paso = todas[1] - todas[0] if len(todas) > 1 else 1
-        self.marcas_x = [v for v in todas if self.x_min - 1e-9 <= v <= self.x_max + 1e-9]
-        self._textos_x = [numero(v, paso) for v in self.marcas_x]
+        self.marcas_x = Lista(v for v in todas if self.x_min - 1e-9 <= v <= self.x_max + 1e-9)
+        self._textos_x = Lista(numero(v, paso) for v in self.marcas_x)
         self.categorias = None
         self.etiqueta_x = etiqueta_eje
 
     def eje_x_categorias(self, categorias, etiqueta_eje):
-        self.categorias = [etiqueta(c) for c in categorias]
+        self.categorias = Lista(etiqueta(c) for c in categorias)
         self.etiqueta_x = etiqueta_eje
         banda = (self.der - self.izq) / len(self.categorias)
         self.vertical = max(ancho_texto(c, 2) for c in self.categorias) > banda - 6
         if self.vertical:
             # los nombres largos van girados y el area de dibujo se encoge para que quepan
-            self.categorias = [c if len(c) <= 18 else c[:17] + "." for c in self.categorias]
+            self.categorias = Lista(c if len(c) <= 18 else c[:17] + "." for c in self.categorias)
             largo = max(ancho_texto(c, 2) for c in self.categorias)
             self.abajo = self.lienzo.alto - 44 - largo - 10
 
@@ -265,10 +258,10 @@ def _rango(valores):
     return min(valores), max(valores)
 
 
-def _colores(g: Grafica, cuantos: int) -> list:
+def _colores(g: Grafica, cuantos: int) -> Lista:
     if cuantos == 1 and g.color:
-        return [g.color]
-    return [PALETA[i % len(PALETA)] for i in range(cuantos)]
+        return Lista((g.color,))
+    return Lista(PALETA[i % len(PALETA)] for i in range(cuantos))
 
 
 def _nombre_x(g):
@@ -285,7 +278,7 @@ def _nombre_y(g, por_defecto=""):
 
 def _barras(lienzo, g, filas):
     categorias = _unicos(f[0] for f in filas)
-    series = _unicos(f[2] for f in filas) if g.serie is not None else [None]
+    series = _unicos(f[2] for f in filas) if g.serie is not None else Lista((None,))
     colores = _colores(g, len(series))
     # si una categoria aparece varias veces en la misma serie, sus valores se suman
     valores = {}
@@ -293,7 +286,7 @@ def _barras(lienzo, g, filas):
         valores[(x, s)] = valores.get((x, s), 0) + y
 
     marco = Marco(lienzo, g, series, colores)
-    minimo, maximo = _rango(list(valores.values()))
+    minimo, maximo = _rango(Lista(valores.values()))
     # con una sola serie cada barra lleva su valor encima, y se deja aire para el texto
     aire = 1.08 if len(series) == 1 else 1
     marco.eje_y(min(minimo, 0) * aire, max(maximo, 0) * aire, _nombre_y(g))
@@ -320,26 +313,26 @@ def _barras(lienzo, g, filas):
 
 
 def _lineas(lienzo, g, filas):
-    series = _unicos(f[2] for f in filas) if g.serie is not None else [None]
+    series = _unicos(f[2] for f in filas) if g.serie is not None else Lista((None,))
     colores = _colores(g, len(series))
     marco = Marco(lienzo, g, series, colores)
-    marco.eje_y(*_rango([f[1] for f in filas]), _nombre_y(g))
+    marco.eje_y(*_rango(Lista(f[1] for f in filas)), _nombre_y(g))
     numerico = all(es_numero(f[0]) for f in filas)
     if numerico:
-        marco.eje_x_numerico(*_rango([f[0] for f in filas]), _nombre_x(g))
+        marco.eje_x_numerico(*_rango(Lista(f[0] for f in filas)), _nombre_x(g))
         posicion = marco.px
     else:
         categorias = _unicos(f[0] for f in filas)
         marco.eje_x_categorias(categorias, _nombre_x(g))
         def posicion(x):
-            inicio, ancho = marco.banda(categorias.index(x))
+            inicio, ancho = marco.banda(categorias.indice(x))
             return inicio + ancho / 2
     marco.fondo()
     for serie, color in zip(series, colores):
-        puntos = [(x, y) for x, y, s in filas if s == serie]
+        puntos = Lista((x, y) for x, y, s in filas if s == serie)
         if numerico:
-            puntos.sort(key=lambda p: p[0])
-        pixeles = [(posicion(x), marco.py(y)) for x, y in puntos]
+            puntos = ordenada(puntos, key=lambda p: p[0])
+        pixeles = Lista((posicion(x), marco.py(y)) for x, y in puntos)
         for (x0, y0), (x1, y1) in zip(pixeles, pixeles[1:]):
             lienzo.linea(x0, y0, x1, y1, color, 3)
         if len(pixeles) <= 40:
@@ -349,14 +342,14 @@ def _lineas(lienzo, g, filas):
 
 
 def _histograma(lienzo, g, filas):
-    datos = sorted(f[0] for f in filas)
+    datos = ordenada(f[0] for f in filas)
     # regla de Sturges si no se dice cuantos intervalos
     intervalos = g.intervalos or techo_log2(len(datos)) + 1
     minimo, maximo = datos[0], datos[-1]
     if minimo == maximo:
         minimo, maximo = minimo - 0.5, maximo + 0.5
     ancho = (maximo - minimo) / intervalos
-    conteos = [0] * intervalos
+    conteos = Lista((0,)) * intervalos
     for valor in datos:
         conteos[min(int((valor - minimo) / ancho), intervalos - 1)] += 1
 
@@ -373,11 +366,11 @@ def _histograma(lienzo, g, filas):
 
 
 def _dispersion(lienzo, g, filas):
-    series = _unicos(f[2] for f in filas) if g.serie is not None else [None]
+    series = _unicos(f[2] for f in filas) if g.serie is not None else Lista((None,))
     colores = _colores(g, len(series))
     marco = Marco(lienzo, g, series, colores)
-    marco.eje_y(*_rango([f[1] for f in filas]), _nombre_y(g))
-    marco.eje_x_numerico(*_rango([f[0] for f in filas]), _nombre_x(g), margen=0.03)
+    marco.eje_y(*_rango(Lista(f[1] for f in filas)), _nombre_y(g))
+    marco.eje_x_numerico(*_rango(Lista(f[0] for f in filas)), _nombre_x(g), margen=0.03)
     marco.fondo()
     for serie, color in zip(series, colores):
         for x, y, s in filas:
@@ -388,12 +381,12 @@ def _dispersion(lienzo, g, filas):
 
 def _caja(lienzo, g, filas):
     # sin eje_x sale una sola caja con toda la columna
-    grupos = _unicos(f[0] for f in filas) if g.x is not None else [g.y.nombre or "datos"]
-    datos = {grupo: sorted(y for x, y, _ in filas if g.x is None or x == grupo) for grupo in grupos}
+    grupos = _unicos(f[0] for f in filas) if g.x is not None else Lista((g.y.nombre or "datos",))
+    datos = {grupo: ordenada(y for x, y, _ in filas if g.x is None or x == grupo) for grupo in grupos}
     color = g.color or PALETA[0]
 
     marco = Marco(lienzo, g)
-    marco.eje_y(*_rango([f[1] for f in filas]), _nombre_y(g))
+    marco.eje_y(*_rango(Lista(f[1] for f in filas)), _nombre_y(g))
     marco.eje_x_categorias(grupos, _nombre_x(g) if g.x is not None else "")
     marco.fondo()
     for i, grupo in enumerate(grupos):
@@ -401,7 +394,7 @@ def _caja(lienzo, g, filas):
         q1, mediana, q3 = (cuantil(valores, q) for q in (0.25, 0.5, 0.75))
         rango = q3 - q1
         # los bigotes llegan hasta el dato mas lejano que no se pase de 1,5 veces el rango
-        dentro = [v for v in valores if q1 - 1.5 * rango <= v <= q3 + 1.5 * rango]
+        dentro = Lista(v for v in valores if q1 - 1.5 * rango <= v <= q3 + 1.5 * rango)
         inicio, ancho = marco.banda(i)
         centro, medio = inicio + ancho / 2, min(ancho * 0.3, 60)
         lienzo.linea(centro, marco.py(dentro[0]), centro, marco.py(dentro[-1]), EJE)

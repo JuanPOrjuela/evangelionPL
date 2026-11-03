@@ -1,20 +1,19 @@
 """Fase 1: del texto fuente a los tokens y al arbol de analisis."""
 
-from dataclasses import dataclass, field
-
 from antlr4 import CommonTokenStream, InputStream, Token
 
 from .errores import ErrorEva, RecolectorDeErrores
 from .generado.EvaLexer import EvaLexer
 from .generado.EvaParser import EvaParser
+from .listas import Lista
 
 
-@dataclass
 class Resultado:
-    fuente: str
-    tokens: list = field(default_factory=list)
-    arbol: object = None
-    errores: list = field(default_factory=list)
+    def __init__(self, fuente: str):
+        self.fuente = fuente
+        self.tokens = Lista()
+        self.arbol = None
+        self.errores = Lista()
 
     @property
     def valido(self) -> bool:
@@ -29,7 +28,7 @@ def analizar(fuente: str) -> Resultado:
     lexer.removeErrorListeners()
     flujo = CommonTokenStream(lexer)
     flujo.fill()
-    res.tokens = [t for t in flujo.tokens if t.type != Token.EOF]
+    res.tokens = Lista(t for t in flujo.tokens if t.type != Token.EOF)
 
     lexicos = _errores_lexicos(res.tokens)
 
@@ -45,24 +44,24 @@ def analizar(fuente: str) -> Resultado:
     return res
 
 
-def _primero_por_linea(errores) -> list:
+def _primero_por_linea(errores) -> Lista:
     """Despues del primer error el parser se pierde y reporta de mas en la misma linea."""
-    vistas, filtrados = set(), []
+    vistas, filtrados = set(), Lista()
     for error in errores:
         if error.linea not in vistas:
             vistas.add(error.linea)
-            filtrados.append(error)
+            filtrados.agregar(error)
     return filtrados
 
 
-def _errores_lexicos(tokens) -> list:
-    errores = []
+def _errores_lexicos(tokens) -> Lista:
+    errores = Lista()
     for t in tokens:
         if t.type == EvaLexer.CARACTER_INVALIDO:
-            errores.append(ErrorEva("lexico", t.line, t.column,
+            errores.agregar(ErrorEva("lexico", t.line, t.column,
                                     f"el carácter '{t.text}' no pertenece al lenguaje."))
         elif t.type == EvaLexer.CADENA_SIN_CERRAR:
-            errores.append(ErrorEva("lexico", t.line, t.column,
+            errores.agregar(ErrorEva("lexico", t.line, t.column,
                                     "el texto no se cerró, falta la comilla del final."))
     return errores
 

@@ -1,0 +1,332 @@
+# Todo lo que sabe hacer evangelionPL, en un solo programa.
+# Se corre con: python run.py ejemplos/08_todo_el_lenguaje.eva
+# Casi todo tiene dos nombres, en espanol y de Evangelion. La cabecera tambien se puede escribir programa "..."
+NERV "Todo el lenguaje"
+
+# ================ 1. Variables y expresiones ================
+base = 7
+altura = 2.5
+area = base * altura / 2
+mostrar area
+mostrar 17 % 5
+mostrar 2 ^ 3 ^ 2                 # la potencia va a la derecha: 2 ^ 9
+mostrar "Tokio" + "-" + "3"
+mostrar base > 5 y altura < 2 o no (base == 7)
+mostrar nulo == nulo
+mostrar falso o verdadero
+
+# ================ 2. Condicionales ================
+nota = 3.8
+si nota >= 4.5 {
+    mostrar "excelente"
+} sino si nota >= 3 {
+    mostrar "aprobado"
+} sino {
+    mostrar "reprobado"
+}
+
+# ================ 3. Ciclos ================
+total = 0
+para i desde 1 hasta 10 {
+    total = total + i
+}
+mostrar total
+
+veces = 0
+n = 1
+mientras n <= 1000 {
+    n = n * 2
+    veces = veces + 1
+}
+mostrar veces
+
+letras = 0
+para letra en "evangelion" {
+    letras = letras + 1
+}
+mostrar letras
+
+# ================ 4. Listas y diccionarios (arreglos propios) ================
+pilotos = ["Shinji", "Asuka", "Rei"]
+agregar(pilotos, "Mari")
+mostrar pilotos
+mostrar pilotos[0]
+mostrar pilotos[-1]
+pilotos[1] = "Soryu"
+mostrar sacar(pilotos)
+mostrar longitud(pilotos)
+mostrar contiene(pilotos, "Rei")
+mostrar ordenada(pilotos)
+mostrar invertida(pilotos)
+mostrar unir(pilotos, ["Kaworu"])
+mostrar rango(5)
+mostrar rango(2, 10, 2)
+
+edades = {"Shinji": 14, Rei: 14}
+edades["Mari"] = 15
+mostrar edades
+mostrar edades.Mari
+mostrar claves(edades)
+mostrar valores(edades)
+para nombre en edades {
+    si edades[nombre] > 14 {
+        mostrar nombre + " tiene " + texto(edades[nombre])
+    }
+}
+mostrar numero("3.5") + 1
+
+semilla(7)
+mostrar aleatorio(1, 6)
+
+# ================ 5. Funciones y estilo funcional ================
+funcion promedio_de(a, b) {
+    retornar (a + b) / 2
+}
+mostrar promedio_de(4, 10)
+
+funcion fact(k) {
+    si k <= 1 {
+        retornar 1
+    }
+    retornar k * fact(k - 1)      # recursion
+}
+mostrar fact(6)
+
+funcion doble(x) { retornar x * 2 }
+funcion es_par(x) { retornar x % 2 == 0 }
+funcion aplicar(f, x) { retornar f(x) }   # una funcion recibe otra funcion
+mostrar aplicar(doble, 21)
+mostrar mapear(doble, rango(4))
+mostrar filtrar(es_par, rango(6))
+mostrar suma(mapear(doble, filtrar(es_par, rango(6))))
+
+# ================ 6. Matematicas propias (sin math) ================
+mostrar raiz(2)
+mostrar raiz(27, 3)
+mostrar exp(1)
+mostrar ln(e)
+mostrar log(1000)
+mostrar log(8, 2)
+mostrar redondear(sen(pi / 2), 4)
+mostrar redondear(cos(pi), 4)
+mostrar redondear(tan(0.5), 4)
+mostrar redondear(tanh(0.5), 4)
+mostrar piso(2.7)
+mostrar techo(2.1)
+mostrar absoluto(-3)
+mostrar factorial(5)
+
+# raices y derivada de una funcion escrita en el lenguaje
+funcion f(x) { retornar x ^ 2 - 2 }
+mostrar biseccion(f, 0, 2)
+mostrar newton(f, 1)
+mostrar derivada(f, 3)
+
+# ================ 7. Vectores y matrices (lo que haria NumPy) ================
+mostrar [1, 2, 3] + [10, 20, 30]
+mostrar [1, 2, 3] * 2
+mostrar punto([1, 2], [3, 4])
+mostrar norma([3, 4])
+mostrar suma([1, 2, 3])
+mostrar media([1, 2, 3])
+mostrar mediana([5, 1, 3])
+mostrar minimo([5, 1, 3])
+mostrar maximo([5, 1, 3])
+mostrar desviacion([2, 4, 6])
+
+a = [[2, 1], [1, 3]]
+mostrar a
+mostrar forma(a)
+mostrar transpuesta(a)
+mostrar producto(a, identidad(2))
+mostrar determinante(a)
+mostrar inversa(a)
+mostrar resolver(a, [5, 10])       # 2x + y = 5 y x + 3y = 10
+mostrar ceros(2, 2)
+mostrar unos(3)
+
+# ================ 8. Tablas (lo que haria pandas) ================
+pruebas = cargar "datos/pruebas_sincronizacion.csv"
+mostrar pruebas |> diagnosticar
+mostrar filas(pruebas)
+
+limpias = pruebas
+    |> quitar duplicados
+    |> quitar faltantes [sincronizacion]
+    |> rellenar armonicos = 0
+    |> convertir prueba -> texto
+    |> quitar columnas [bateria_min]
+    |> crear piloto_mayus = mayusculas(piloto),
+             unidad_baja = minusculas(unidad),
+             unidad_corta = reemplazar(unidad, "EVA-", "E"),
+             alta = sincronizacion >= 60
+    |> renombrar [sincronizacion -> sync]
+
+resumen = limpias
+    |> filtrar donde alta y piloto != "Kaworu"
+    |> agrupar por [piloto]
+    |> resumir veces_vista = contar(), promedio = media(sync), tope = maximo(sync),
+               piso_sync = minimo(sync), acumulada = suma(sync), centro = mediana(sync),
+               dispersa = desviacion(sync)
+    |> ordenar por [promedio desc]
+mostrar resumen
+
+# Lo mismo con las palabras de Evangelion
+NERV_resumen = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+    |> EJECT faltantes [sincronizacion]
+    |> AT_FIELD donde sincronizacion >= 60
+    |> SYNC doble_sync = sincronizacion * 2
+    |> TARGET [piloto, sincronizacion, doble_sync]
+    |> FORMATION por [sincronizacion desc]
+    |> BATTERY 3
+MONITOR NERV_resumen
+
+MONITOR pruebas |> DIAGNOSTIC
+
+tablero = ENTRY_PLUG "datos/pruebas_sincronizacion.csv"
+    |> EJECT faltantes [sincronizacion]
+    |> DUMMY_PLUG armonicos = 0
+    |> EQUIP prueba -> texto
+    |> CODENAME [sincronizacion -> sync]
+    |> SQUAD por [piloto]
+    |> MAGI mayor = maximo(sync), n_pruebas = contar()
+    |> FORMATION por [mayor desc]
+MONITOR tablero
+
+PATTERN_BLUE filas(tablero) > 2 {
+    MONITOR "hay mas de dos pilotos"
+} PATTERN_ORANGE {
+    MONITOR "hay pocos pilotos"
+}
+
+SEELE tablero como "salidas/todo_tablero.csv"
+HOLOGRAM barras de tablero {
+    eje_x: piloto,
+    eje_y: mayor,
+    titulo: "Mejor sincronizacion por piloto",
+    leyenda: falso,
+    archivo: "salidas/todo_tablero.png"
+}
+
+# Otro separador y columnas con espacios
+combates = cargar "datos/combates.csv" con { separador: ";" }
+mostrar combates |> seleccionar [Angel, `Unidad EVA`] |> limitar 2
+
+# De tabla a lista y de lista a tabla; recorrer las filas
+mostrar media(limpias.sync)
+sincros = columna(resumen, "promedio")
+mostrar redondear(sincros, 1)
+propia = tabla_de({"x": [1, 2, 3, 4, 5, 6], "val": [3, 5, 7, 9, 11, 13]})
+mostrar propia
+primeras = propia |> limitar 2
+para fila en primeras {
+    mostrar fila["x"] + fila["val"]
+}
+funcion de_shinji(fila) { retornar fila["piloto"] == "Shinji" }
+mostrar filas(filtrar(de_shinji, limpias))
+mostrar limpias |> convertir alta -> booleano |> seleccionar [piloto, alta] |> limitar 2
+
+guardar resumen como "salidas/todo_resumen.csv"
+
+# ================ 9. Graficas (lo que haria Matplotlib) ================
+graficar barras de resumen {
+    eje_x: piloto,
+    eje_y: promedio,
+    titulo: "Sincronizacion promedio",
+    etiqueta_y: "Promedio",
+    color: "morado",
+    archivo: "salidas/todo_barras.png"
+}
+graficar lineas de limpias {
+    eje_x: fecha,
+    eje_y: sync,
+    serie: piloto,
+    titulo: "Sincronizacion en el tiempo",
+    archivo: "salidas/todo_lineas.png"
+}
+graficar histograma de limpias {
+    eje_x: sync,
+    intervalos: 6,
+    titulo: "Distribucion de la sincronizacion",
+    archivo: "salidas/todo_histograma.png"
+}
+graficar dispersion de limpias {
+    eje_x: sync,
+    eje_y: armonicos,
+    serie: piloto,
+    titulo: "Sincronizacion y armonicos",
+    leyenda: verdadero,
+    archivo: "salidas/todo_dispersion.png"
+}
+graficar caja de limpias {
+    eje_x: piloto,
+    eje_y: sync,
+    titulo: "Sincronizacion por piloto",
+    ancho: 800,
+    alto: 500,
+    archivo: "salidas/todo_caja.svg"
+}
+
+# ================ 10. Aprendizaje automatico (lo que haria scikit-learn) ================
+funcion nivel(toneladas) {
+    si toneladas > 3 { retornar "alto" }
+    sino si toneladas > 1.5 { retornar "medio" }
+    retornar "bajo"
+}
+co2 = cargar "datos/co2_latam.csv"
+    |> quitar faltantes [gdp, population, co2_per_capita, energy_per_capita]
+    |> crear pib_persona = gdp / population,
+             contamina = mapear(nivel, co2_per_capita),
+             contamina_mucho = co2_per_capita > 2
+
+mostrar redondear(correlacion(co2.energy_per_capita, co2.co2_per_capita), 3)
+
+partes = dividir(co2, 0.8)
+entrena = partes[0]
+prueba = partes[1]
+variables = ["energy_per_capita", "pib_persona"]
+
+# Prediccion: un numero
+lineal = regresion(entrena, variables, "co2_per_capita")
+salida = predecir(lineal, prueba)
+mostrar redondear(r2(salida.co2_per_capita, salida.prediccion), 3)
+mostrar redondear(error_cuadratico(salida.co2_per_capita, salida.prediccion), 3)
+mostrar redondear(predecir(lineal, [20000, 15000]), 2)
+
+arbol_numero = arbol(entrena, variables, "co2_per_capita", 3)
+salida = predecir(arbol_numero, prueba)
+mostrar redondear(r2(salida.co2_per_capita, salida.prediccion), 3)
+
+# Clasificacion: una categoria
+decision = arbol(entrena, variables, "contamina", 3)
+mostrar reglas(decision)
+salida = predecir(decision, prueba)
+mostrar redondear(exactitud(salida.contamina, salida.prediccion), 3)
+
+para activacion en ["escalon", "lineal", "tanh", "sigmoide"] {
+    neurona = perceptron(entrena, variables, "contamina_mucho", 0.5, 100, activacion)
+    salida = predecir(neurona, prueba)
+    mostrar activacion + ": " + texto(redondear(exactitud(salida.contamina_mucho, salida.prediccion), 3))
+}
+
+red = red_neuronal(entrena, variables, "contamina", 5, 0.3, 40)
+salida = predecir(red, prueba)
+mostrar redondear(exactitud(salida.contamina, salida.prediccion), 3)
+
+vecindad = prueba |> pronosticar contamina por [energy_per_capita, pib_persona] vecinos 5
+mostrar redondear(exactitud(vecindad.contamina, vecindad.contamina_prediccion), 3)
+vecindad = prueba |> PROFECIA contamina por [energy_per_capita, pib_persona] vecinos 3
+mostrar redondear(exactitud(vecindad.contamina, vecindad.contamina_prediccion), 3)
+
+# Agrupamiento: filas parecidas, sin conocer la respuesta
+paises = co2 |> filtrar donde year == 2022
+agrupados = grupos(paises, ["co2_per_capita", "energy_per_capita"], 3)
+mostrar agrupados |> seleccionar [country, co2_per_capita, grupo] |> ordenar por [grupo asc, co2_per_capita desc]
+
+graficar dispersion de agrupados {
+    eje_x: energy_per_capita,
+    eje_y: co2_per_capita,
+    serie: grupo,
+    titulo: "Paises agrupados con k-medias (2022)",
+    archivo: "salidas/todo_grupos.png"
+}

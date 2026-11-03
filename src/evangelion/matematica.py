@@ -4,6 +4,8 @@ Las funciones con decimales se calculan con series (Taylor) o con el metodo de
 Newton, y se paran cuando el siguiente termino ya no cambia el resultado.
 """
 
+from .listas import Lista
+
 PI = 3.141592653589793
 LN2 = 0.6931471805599453
 PRECISION = 1e-15
@@ -197,9 +199,9 @@ class Aleatorio:
         """Un entero entre desde y hasta, los dos incluidos."""
         return desde + int(self.siguiente() * (hasta - desde + 1))
 
-    def barajar(self, lista: list) -> list:
+    def barajar(self, lista: Lista) -> Lista:
         """Fisher-Yates: recorre la lista de atras hacia adelante intercambiando al azar."""
-        lista = list(lista)
+        lista = Lista(lista)
         for i in range(len(lista) - 1, 0, -1):
             j = self.entero(0, i)
             lista[i], lista[j] = lista[j], lista[i]

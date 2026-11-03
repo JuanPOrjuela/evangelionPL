@@ -1,14 +1,14 @@
 """Tabla de simbolos: que variables existen, de que clase son y donde se definieron."""
 
-from dataclasses import dataclass
+from .listas import Lista
 
 
-@dataclass
 class Simbolo:
-    nombre: str
-    clase: str     # tabla, numero, texto, booleano, lista, diccionario, funcion o nulo
-    valor: object
-    linea: int
+    def __init__(self, nombre: str, clase: str, valor, linea: int):
+        self.nombre = nombre
+        self.clase = clase     # tabla, numero, texto, booleano, lista, diccionario, funcion o nulo
+        self.valor = valor
+        self.linea = linea
 
     def detalle(self) -> str:
         if self.clase == "tabla":
@@ -32,13 +32,13 @@ class TablaSimbolos:
 
     def __init__(self):
         self._simbolos: dict[str, Simbolo] = {}
-        self._locales: list[dict[str, Simbolo]] = []
+        self._locales: Lista[dict[str, Simbolo]] = Lista()
 
     def entrar(self) -> None:
-        self._locales.append({})
+        self._locales.agregar({})
 
     def salir(self) -> None:
-        self._locales.pop()
+        self._locales.sacar()
 
     @property
     def profundidad(self) -> int:
@@ -53,9 +53,9 @@ class TablaSimbolos:
             return self._locales[-1][nombre]
         return self._simbolos.get(nombre)
 
-    def nombres(self) -> list:
-        locales = list(self._locales[-1]) if self._locales else []
-        return locales + [n for n in self._simbolos if n not in locales]
+    def nombres(self) -> Lista:
+        locales = Lista(self._locales[-1]) if self._locales else Lista()
+        return locales + Lista(n for n in self._simbolos if n not in locales)
 
     def __len__(self) -> int:
         return len(self._simbolos)
@@ -65,7 +65,7 @@ class TablaSimbolos:
             return "  (vacía)"
         ancho = max(len(n) for n in self._simbolos)
         ancho = max(ancho, len("NOMBRE"))
-        filas = [f"  {'NOMBRE':<{ancho}}  {'CLASE':<9} {'LÍNEA':<6} VALOR"]
+        filas = Lista((f"  {'NOMBRE':<{ancho}}  {'CLASE':<9} {'LÍNEA':<6} VALOR",))
         for s in self._simbolos.values():
-            filas.append(f"  {s.nombre:<{ancho}}  {s.clase:<9} {s.linea:<6} {s.detalle()}")
+            filas.agregar(f"  {s.nombre:<{ancho}}  {s.clase:<9} {s.linea:<6} {s.detalle()}")
         return "\n".join(filas)

@@ -5,6 +5,8 @@ Las de 7 filas se paran sobre la linea base; las de 9 (g, j, p, q, y, coma)
 bajan dos filas mas. Lo que no esta aqui se dibuja como '?'.
 """
 
+from .listas import Lista, partir
+
 ANCHO, ALTO, AVANCE = 5, 7, 6   # el avance deja una columna libre entre letras
 
 _LETRAS = {
@@ -111,16 +113,16 @@ _LETRAS = {
 _EQUIVALENTES = {"Á": "A", "É": "E", "Í": "I", "Ó": "O", "Ú": "U", "Ü": "U"}
 
 
-def _pixeles(dibujo: str) -> list:
+def _pixeles(dibujo: str) -> Lista:
     """Pasa el dibujo de una letra a la lista de (columna, fila) prendidas."""
-    return [(x, y) for y, fila in enumerate(dibujo.split("|"))
-            for x, punto in enumerate(fila) if punto == "#"]
+    return Lista((x, y) for y, fila in enumerate(partir(dibujo, "|"))
+            for x, punto in enumerate(fila) if punto == "#")
 
 
 LETRAS = {letra: _pixeles(dibujo) for letra, dibujo in _LETRAS.items()}
 
 
-def pixeles_de(letra: str) -> list:
+def pixeles_de(letra: str) -> Lista:
     letra = _EQUIVALENTES.get(letra, letra)
     return LETRAS.get(letra, LETRAS["?"])
 
