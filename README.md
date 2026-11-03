@@ -47,27 +47,15 @@ estudio está en [`caso_estudio/`](caso_estudio/README.md).
 
 ## Instalación
 
-Hace falta Python 3.10 o superior. En Windows basta con:
-
-```
-instalar.bat
-```
-
-En Linux (o en una máquina virtual con Ubuntu):
-
-```
-bash instalar.sh
-```
-
-Cualquiera de los dos crea el entorno virtual, instala las dependencias y corre
-las pruebas. En Ubuntu, si falta el paquete `python3-venv`, el script lo instala
-y pide la contraseña de sudo. A mano sería:
+Hace falta Python 3.10 o superior. Desde la carpeta del proyecto:
 
 ```
 python -m venv .venv
 .venv\Scripts\activate              (en Linux: source .venv/bin/activate)
 pip install antlr4-python3-runtime==4.13.2 pytest
 ```
+
+Después cada programa se corre por separado, un archivo a la vez.
 
 No se necesita Java para usar el lenguaje: el lexer y el parser ya vienen
 generados en `src/evangelion/generado/`.

@@ -131,11 +131,11 @@ dice qué causa qué.
 
 ## 7. Cómo reproducirlo
 
-Desde la carpeta del proyecto, con el entorno instalado (`instalar.bat`):
+Desde la carpeta del proyecto, con el entorno instalado:
 
 ```
 python caso_estudio/descargar_datos.py    # opcional: baja la versión más nueva de los datos
-eva caso_estudio\co2_latam.eva           # escribe todo en caso_estudio/resultados/
+python run.py caso_estudio/co2_latam.eva  # escribe todo en caso_estudio/resultados/
 ```
 
 El programa corre en menos de un segundo. La prueba
