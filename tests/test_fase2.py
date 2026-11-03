@@ -351,7 +351,7 @@ def test_los_tres_programas_exportan_sus_reportes(carpeta, capsys):
 def test_los_errores_muestran_a_gendo(ruta, carpeta, capsys):
     assert main([str(ruta)]) == 1
     salida = capsys.readouterr().out
-    assert "|####|--|####|" in salida   # las gafas de Gendo
+    assert "|###//###|" in salida   # las gafas de Gendo
     assert "sincronización fallida" in salida
     assert "línea" in salida and "columna" in salida
     assert "Felicidades" not in salida
