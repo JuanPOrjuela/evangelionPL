@@ -1,0 +1,39 @@
+# PRUEBA 4: cambiar el metodo numerico. Por defecto sen, cos y exp usan series de Taylor,
+# ln una serie y raiz el metodo de Newton. Con metodo() se cambia por otro.
+# Correr: python run.py sustentacion/4_cambiar_metodo_numerico.eva
+programa "Prueba 4: cambiar el metodo numerico"
+
+x = 1.2
+mostrar "--- con los metodos de siempre ---"
+mostrar [metodo("sen"), metodo("cos"), metodo("exp"), metodo("ln"), metodo("raiz")]
+antes = [sen(x), cos(x), exp(x), ln(x), raiz(x)]
+mostrar antes
+
+# Taylor -> duplicacion del angulo, serie -> Newton, Newton -> biseccion
+metodo("sen", "duplicacion")
+metodo("cos", "duplicacion")
+metodo("exp", "newton")
+metodo("ln", "newton")
+metodo("raiz", "biseccion")
+mostrar "--- con los otros metodos ---"
+mostrar [metodo("sen"), metodo("cos"), metodo("exp"), metodo("ln"), metodo("raiz")]
+despues = [sen(x), cos(x), exp(x), ln(x), raiz(x)]
+mostrar despues
+funcion distancia(d) {
+    si d < 0 { retornar -d }
+    retornar d
+}
+mostrar "diferencia mas grande entre los dos metodos: " + texto(maximo(mapear(distancia, antes - despues)))
+
+# Todo lo que usa esas funciones cambia tambien (por ejemplo tanh usa exp)
+mostrar tanh(0.5)
+
+# Raices de una funcion propia con dos metodos distintos, y su derivada
+funcion f(z) { retornar z ^ 3 - 2 * z - 5 }
+mostrar "biseccion: " + texto(biseccion(f, 2, 3))
+mostrar "newton:    " + texto(newton(f, 2))
+mostrar "derivada en 2: " + texto(redondear(derivada(f, 2), 6))
+
+# Volver a Taylor
+metodo("sen", "taylor")
+mostrar metodo("sen")

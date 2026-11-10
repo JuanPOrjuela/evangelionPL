@@ -2,6 +2,9 @@
 
 Las funciones con decimales se calculan con series (Taylor) o con el metodo de
 Newton, y se paran cuando el siguiente termino ya no cambia el resultado.
+Varias tienen un segundo metodo y se elige desde el lenguaje con metodo():
+    metodo("sen", "duplicacion")   # desde aqui sen() ya no usa Taylor
+    metodo("sen")                  # dice cual metodo esta activo
 """
 
 from .listas import Lista
@@ -9,6 +12,35 @@ from .listas import Lista
 PI = 3.141592653589793
 LN2 = 0.6931471805599453
 PRECISION = 1e-15
+
+# El primer metodo de cada funcion es el que se usa si no se cambia
+METODOS = {"exp": ("taylor", "newton"), "ln": ("serie", "newton"),
+           "sen": ("taylor", "duplicacion"), "cos": ("taylor", "duplicacion"),
+           "raiz": ("newton", "biseccion")}
+_activo = {}
+
+
+def reiniciar_metodos() -> None:
+    """Vuelve todas las funciones a su metodo por defecto (al empezar cada programa)."""
+    for funcion, opciones in METODOS.items():
+        _activo[funcion] = opciones[0]
+
+
+def metodo(funcion, nombre=None):
+    """metodo("sen") dice que metodo usa sen(); metodo("sen", "duplicacion") lo cambia."""
+    if funcion not in METODOS:
+        raise ValueError(f"'{funcion}' no tiene métodos para escoger; se pueden cambiar: "
+                         + ", ".join(METODOS))
+    if nombre is None:
+        return _activo[funcion]
+    if nombre not in METODOS[funcion]:
+        raise ValueError(f"'{nombre}' no es un método de {funcion}(); los que hay son: "
+                         + ", ".join(METODOS[funcion]))
+    _activo[funcion] = nombre
+    return nombre
+
+
+reiniciar_metodos()
 
 
 def es_entero(x) -> bool:
@@ -46,6 +78,8 @@ def raiz(x, indice=2):
         raise ValueError("no hay raíz real de un número negativo")
     if x == 0:
         return 0.0
+    if _activo["raiz"] == "biseccion":
+        return _raiz_biseccion(x, indice)
     # el primer intento sale de los logaritmos y Newton lo pule
     aproximacion = exp(ln(x) / indice)
     for _ in range(100):
@@ -56,13 +90,47 @@ def raiz(x, indice=2):
     return aproximacion
 
 
+def _raiz_biseccion(x, indice):
+    """La raiz y cumple y^indice = x. Esta entre 0 y max(1, x): se parte ese intervalo
+    a la mitad y se queda la mitad donde y^indice pasa de menos a mas que x."""
+    bajo, alto = 0.0, x if x > 1 else 1.0
+    for _ in range(2000):
+        medio = (bajo + alto) / 2
+        if medio == bajo or medio == alto:   # ya no caben mas decimales
+            return medio
+        if medio ** indice < x:
+            bajo = medio
+        else:
+            alto = medio
+    return (bajo + alto) / 2
+
+
 def exp(x):
-    """e^x. Se parte x a la mitad varias veces para que la serie converja rapido,
-    y al final se eleva al cuadrado las mismas veces: e^x = (e^(x/2^k))^(2^k)."""
+    """e^x con el metodo activo: "taylor" (la serie) o "newton" (resuelve ln(y) = x)."""
     if x > 709:
         raise OverflowError("el resultado de exp() es demasiado grande")
     if x < -745:
         return 0.0
+    if _activo["exp"] == "newton" and x > -700:
+        return _exp_newton(x)
+    return _exp_taylor(x)
+
+
+def _exp_newton(x):
+    """Newton sobre f(y) = ln(y) - x: y = y - f(y)/f'(y) = y * (1 + x - ln(y)).
+    El primer intento es una potencia de 2 cercana: e^x = 2^(x / ln 2)."""
+    y = 2.0 ** int(x / LN2)
+    for _ in range(100):
+        siguiente = y * (1 + x - _ln_serie(y))
+        if absoluto(siguiente - y) <= PRECISION * siguiente:
+            return siguiente
+        y = siguiente
+    return y
+
+
+def _exp_taylor(x):
+    """Serie de Taylor e^x = 1 + x + x^2/2! + ... Se parte x a la mitad varias veces para
+    que la serie converja rapido, y al final se eleva al cuadrado: e^x = (e^(x/2^k))^(2^k)."""
     mitades = 0
     while absoluto(x) > 0.5:
         x /= 2
@@ -78,10 +146,16 @@ def exp(x):
 
 
 def ln(x):
-    """Logaritmo natural. x = m * 2^k con m entre 1 y 2, asi ln(x) = k*ln(2) + ln(m),
-    y ln(m) sale de la serie ln(m) = 2 * (z + z^3/3 + z^5/5 + ...) con z = (m-1)/(m+1)."""
+    """Logaritmo natural con el metodo activo: "serie" o "newton" (resuelve e^y = x)."""
     if x <= 0:
         raise ValueError("el logaritmo solo existe para números mayores que cero")
+    if _activo["ln"] == "newton":
+        return _ln_newton(x)
+    return _ln_serie(x)
+
+
+def _partir_en_potencia_de_2(x) -> tuple:
+    """x = m * 2^k con m entre 1 y 2."""
     k = 0
     while x >= 2:
         x /= 2
@@ -89,6 +163,27 @@ def ln(x):
     while x < 1:
         x *= 2
         k -= 1
+    return x, k
+
+
+def _ln_newton(x):
+    """ln(x) = k*ln(2) + ln(m), y ln(m) con Newton sobre f(y) = e^y - m:
+    y = y - (e^y - m) / e^y = y - 1 + m / e^y. Como m esta entre 1 y 2, y esta entre 0 y 0.7."""
+    m, k = _partir_en_potencia_de_2(x)
+    y = m - 1
+    for _ in range(100):
+        siguiente = y - 1 + m / _exp_taylor(y)
+        if absoluto(siguiente - y) <= PRECISION:
+            y = siguiente
+            break
+        y = siguiente
+    return k * LN2 + y
+
+
+def _ln_serie(x):
+    """x = m * 2^k con m entre 1 y 2, asi ln(x) = k*ln(2) + ln(m),
+    y ln(m) sale de la serie ln(m) = 2 * (z + z^3/3 + z^5/5 + ...) con z = (m-1)/(m+1)."""
+    x, k = _partir_en_potencia_de_2(x)
     z = (x - 1) / (x + 1)
     z2, termino, suma, n = z * z, z, 0.0, 1
     while True:
@@ -133,7 +228,24 @@ def _reducir_angulo(x):
     return x - vueltas * 2 * PI
 
 
+def _duplicar_angulo(x) -> tuple:
+    """Seno y coseno sin series: se parte el angulo a la mitad hasta que es casi 0, donde
+    sen(a) = a y 1 - cos(a) = a^2/2, y se vuelve a doblar con
+    sen(2a) = 2 sen(a) cos(a) y 1 - cos(2a) = 2 sen(a)^2. Devuelve (seno, coseno)."""
+    a, mitades = _reducir_angulo(x), 0
+    while absoluto(a) > 1e-8:
+        a /= 2
+        mitades += 1
+    seno, uno_menos_coseno = a, a * a / 2
+    for _ in range(mitades):
+        seno, uno_menos_coseno = 2 * seno * (1 - uno_menos_coseno), 2 * seno * seno
+    return seno, 1 - uno_menos_coseno
+
+
 def sen(x):
+    """Seno con el metodo activo: "taylor" (x - x^3/3! + x^5/5! - ...) o "duplicacion"."""
+    if _activo["sen"] == "duplicacion":
+        return _duplicar_angulo(x)[0]
     x = _reducir_angulo(x)
     termino, suma, n = x, x, 1
     while absoluto(termino) > PRECISION:
@@ -144,6 +256,9 @@ def sen(x):
 
 
 def cos(x):
+    """Coseno con el metodo activo: "taylor" (1 - x^2/2! + x^4/4! - ...) o "duplicacion"."""
+    if _activo["cos"] == "duplicacion":
+        return _duplicar_angulo(x)[1]
     x = _reducir_angulo(x)
     termino, suma, n = 1.0, 1.0, 0
     while absoluto(termino) > PRECISION:

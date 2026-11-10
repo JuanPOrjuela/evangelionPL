@@ -867,3 +867,42 @@ def test_el_programa_corre_con_run_py(carpeta):
     r = subprocess.run([sys.executable, str(RAIZ / "run.py"), str(RAIZ / "ejemplos" / "01_primera_prueba.eva")],
                        capture_output=True, encoding="utf-8", errors="replace", cwd=carpeta)
     assert r.returncode == 0 and "EVA - 01" in r.stdout and r.stderr == ""
+
+
+# --- Cambiar el metodo numerico: metodo("sen", "duplicacion") ---------------------
+
+@pytest.mark.parametrize("funcion,nombre", [(f, m) for f, ms in matematica.METODOS.items() for m in ms])
+def test_cada_metodo_da_lo_mismo_que_python(funcion, nombre):
+    matematica.metodo(funcion, nombre)
+    try:
+        if funcion in ("sen", "cos"):
+            for i in range(-1000, 1001, 7):
+                x = i / 100
+                assert getattr(matematica, funcion)(x) == pytest.approx((math.sin if funcion == "sen" else math.cos)(x), abs=1e-12)
+        elif funcion == "exp":
+            for x in (-700, -50, -1, -1e-9, 0, 0.3, 1, 10, 100, 700):
+                assert matematica.exp(x) == pytest.approx(math.exp(x), rel=1e-12)
+        elif funcion == "ln":
+            for x in (1e-300, 1e-5, 0.5, 1, 2, 10, 12345.678, 1e300):
+                assert matematica.ln(x) == pytest.approx(math.log(x), rel=1e-12, abs=1e-15)
+        else:
+            for x, n in ((2, 2), (1e-6, 2), (27, 3), (1e10, 2), (0.25, 2), (-8, 3), (5, 2.5)):
+                esperado = -abs(x) ** (1 / n) if x < 0 else x ** (1 / n)
+                assert matematica.raiz(x, n) == pytest.approx(esperado, rel=1e-12)
+    finally:
+        matematica.reiniciar_metodos()
+
+
+def test_metodo_se_cambia_desde_el_lenguaje_y_cada_programa_empieza_con_el_de_siempre():
+    assert v('r = [metodo("sen"), metodo("exp"), metodo("ln"), metodo("raiz")]') == \
+        Lista(("taylor", "taylor", "serie", "newton"))
+    r = v('metodo("sen", "duplicacion")\nmetodo("exp", "newton")\nr = [metodo("sen"), sen(pi / 6), exp(1)]')
+    assert r[0] == "duplicacion"
+    assert r[1] == pytest.approx(0.5, abs=1e-14) and r[2] == pytest.approx(math.e, rel=1e-14)
+    assert v('r = metodo("sen")') == "taylor"     # el programa anterior no deja el cambio puesto
+
+
+def test_metodo_con_nombres_que_no_existen_da_error_semantico():
+    assert "no es un método de sen(); los que hay son: taylor, duplicacion" in falla('metodo("sen", "cordic")')
+    assert "no tiene métodos para escoger" in falla('metodo("factorial", "otro")')
+    assert "va con textos" in falla('metodo(1)')

@@ -1,0 +1,26 @@
+# PRUEBA 3: XOR. Un perceptron solo traza UNA recta, y XOR no se puede separar
+# con una recta; por eso falla. Una red con una capa oculta si lo aprende.
+# Correr: python run.py sustentacion/3_perceptron_xor.eva
+programa "Prueba 3: perceptron y XOR"
+
+xor = tabla_de({"a": [0, 0, 1, 1], "b": [0, 1, 0, 1], "salida": [0, 1, 1, 0]})
+mostrar xor
+
+# Perceptron y = activacion(w1*a + w2*b + theta), con las 4 activaciones
+para activacion en ["escalon", "lineal", "tanh", "sigmoide"] {
+    neurona = perceptron(xor, ["a", "b"], "salida", 0.1, 500, activacion)
+    r = predecir(neurona, xor)
+    mostrar "perceptron " + activacion + ": exactitud " + texto(exactitud(r.salida, r.prediccion))
+}
+
+# Red neuronal: 4 neuronas ocultas, retropropagacion (regla de la cadena)
+red = red_neuronal(xor, ["a", "b"], "salida", 4, 0.5, 3000)
+r = predecir(red, xor)
+mostrar r
+mostrar "red neuronal: exactitud " + texto(exactitud(r.salida, r.prediccion))
+
+# Con AND, que si se separa con una recta, el perceptron solo si acierta
+compuerta_and = tabla_de({"a": [0, 0, 1, 1], "b": [0, 1, 0, 1], "salida": [0, 0, 0, 1]})
+neurona = perceptron(compuerta_and, ["a", "b"], "salida", 0.1, 500, "escalon")
+r = predecir(neurona, compuerta_and)
+mostrar "perceptron con AND: exactitud " + texto(exactitud(r.salida, r.prediccion))

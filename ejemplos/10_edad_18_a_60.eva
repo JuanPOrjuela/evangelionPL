@@ -1,0 +1,11 @@
+# Personas con edad mayor a 18 y menor a 60, y sus promedios
+# (data.csv sale de datos/data.xlsx: el lenguaje lee CSV, no Excel)
+programa "Edad entre 18 y 60"
+
+personas = cargar "datos/data.csv"
+    |> filtrar donde edad > 18 y edad < 60
+
+mostrar "personas entre 18 y 60: " + texto(filas(personas))
+mostrar "promedio de edad: " + texto(media(personas.edad))
+mostrar "promedio de ingreso mensual: " + texto(media(personas.ingreso_mensual))
+mostrar "promedio de anios de escolaridad: " + texto(media(personas.anios_esc))

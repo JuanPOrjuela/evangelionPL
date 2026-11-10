@@ -47,8 +47,11 @@ def _revisar_columnas(tabla: Tabla, columnas: Lista, numericas: bool = True) -> 
 
 
 def _puntos(tabla: Tabla, variables: Lista) -> Lista:
-    """Una lista por fila con los valores de las variables."""
-    return Lista(Lista(tabla[c].valores[i] for c in variables) for i in range(len(tabla)))
+    """Una lista por fila con los valores de las variables.
+    Cada columna se saca una sola vez: tabla[c] arma una columna nueva cada vez que se pide,
+    y pedirla en cada fila volvia el entrenamiento lentisimo con miles de filas."""
+    columnas = Lista(tabla[c].valores for c in variables)
+    return Lista(Lista(fila) for fila in zip(*columnas))
 
 
 def _escala(puntos: Lista):

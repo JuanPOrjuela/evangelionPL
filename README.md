@@ -218,6 +218,7 @@ también reciben listas.
 |---|---|
 | Matemáticas (`matematica.py`) | `raiz(x)`, `raiz(x, n)`, `exp`, `ln`, `log(x)`, `log(x, base)`, `sen`, `cos`, `tan`, `tanh`, `piso`, `techo`, `factorial`, `redondear`, `absoluto`, y las constantes `pi` y `e` |
 | Métodos numéricos | `biseccion(f, a, b)` y `newton(f, x0)` (raíces de una función), `derivada(f, x)`, `mapear(f, lista o columna)`, `filtrar(f, lista, columna o tabla)` |
+| Cambiar el método | `metodo("sen", "duplicacion")` cambia con qué método se calcula una función desde esa línea; `metodo("sen")` dice cuál está activo. Opciones: `sen` y `cos` (`"taylor"` o `"duplicacion"` del ángulo), `exp` (`"taylor"` o `"newton"`), `ln` (`"serie"` o `"newton"`), `raiz` (`"newton"` o `"biseccion"`). Cada programa empieza con el primero |
 | Matrices (`matrices.py`) | `ceros`, `unos`, `identidad`, `transpuesta`, `producto`, `punto`, `determinante`, `inversa`, `resolver(A, b)`, `forma`, `norma` |
 | Predicción | `regresion(tabla, variables, objetivo, tasa, epocas)` (regresión lineal con el algoritmo del cap. 3 de *Grokking ML*), `arbol(...)` con un objetivo numérico |
 | Clasificación | `arbol(tabla, variables, objetivo, profundidad)` y `reglas(arbol)`, `perceptron(tabla, variables, objetivo, tasa, epocas, activacion)` con activación `"escalon"`, `"lineal"`, `"tanh"` o `"sigmoide"`, `red_neuronal(tabla, variables, objetivo, ocultas, tasa, epocas)` y k vecinos con la etapa `PROFECIA objetivo por [a, b] vecinos k` (alias `pronosticar`) |
@@ -336,6 +337,7 @@ ejemplos/errores/     programas que deben fallar (lex_, sin_, sem_)
 datos/                CSV de práctica y los datos reales del caso de estudio
 caso_estudio/         programa, documento, script de descarga y resultados del caso final
 tests/                pruebas con pytest
+sustentacion/         las 5 pruebas para la sustentación (ver sustentacion/LEEME.md)
 docs/                 manual en PDF y gramática EBNF
 ```
 
@@ -351,7 +353,8 @@ Todo lo que se hace con los datos está escrito a mano en `tablas.py`:
 
 Lo mismo con las gráficas: escalas, cuartiles, dibujo, letra y formato PNG están
 escritos a mano. Las matemáticas no usan el módulo `math`: la raíz sale del método
-de Newton, `exp`, `ln`, seno y coseno de series de Taylor, y el azar de un generador
+de Newton, `exp`, `ln`, seno y coseno de series de Taylor (cada una tiene un segundo
+método que se escoge con `metodo()`), y el azar de un generador
 congruencial con semilla. Las matrices se invierten y los sistemas se resuelven con
 eliminación de Gauss-Jordan, y las raíces de una función con bisección o
 Newton-Raphson. En aprendizaje automático: la regresión lineal usa el algoritmo

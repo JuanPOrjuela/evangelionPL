@@ -1,0 +1,67 @@
+# PRUEBA 1: estructuras de control y de datos.
+# Correr: python run.py sustentacion/1_ciclos_y_estructuras.eva
+programa "Prueba 1: ciclos y estructuras"
+
+# --- para (desde/hasta): suma de 1 a 100 ---
+total = 0
+para i desde 1 hasta 100 {
+    total = total + i
+}
+mostrar "suma de 1 a 100 = " + texto(total)
+
+# --- mientras: cuantas veces se dobla 1 para pasar 1000 ---
+n = 1
+veces = 0
+mientras n <= 1000 {
+    n = n * 2
+    veces = veces + 1
+}
+mostrar "se dobla " + texto(veces) + " veces"
+
+# --- si / sino si / sino dentro de un ciclo (FizzBuzz) ---
+para i desde 1 hasta 15 {
+    si i % 15 == 0 {
+        mostrar "FizzBuzz"
+    } sino si i % 3 == 0 {
+        mostrar "Fizz"
+    } sino si i % 5 == 0 {
+        mostrar "Buzz"
+    } sino {
+        mostrar i
+    }
+}
+
+# --- listas: recorrer, agregar, indexar ---
+cuadrados = []
+para x en rango(1, 6) {
+    agregar(cuadrados, x ^ 2)
+}
+mostrar cuadrados
+mostrar cuadrados[0]
+mostrar cuadrados[-1]
+
+# --- diccionario: contar las letras de una palabra ---
+cuenta = {}
+para letra en "evangelion" {
+    si contiene(claves(cuenta), letra) {
+        cuenta[letra] = cuenta[letra] + 1
+    } sino {
+        cuenta[letra] = 1
+    }
+}
+mostrar cuenta
+
+# --- vectores y matrices ---
+mostrar [1, 2, 3] + [4, 5, 6]
+mostrar punto([1, 2, 3], [4, 5, 6])
+mostrar resolver([[2, 1], [1, 3]], [5, 10])      # 2x + y = 5 ; x + 3y = 10
+
+# --- funciones: recursion y una funcion que recibe otra ---
+funcion fibonacci(k) {
+    si k < 2 { retornar k }
+    retornar fibonacci(k - 1) + fibonacci(k - 2)
+}
+mostrar mapear(fibonacci, rango(10))
+
+funcion es_par(x) { retornar x % 2 == 0 }
+mostrar filtrar(es_par, rango(10))

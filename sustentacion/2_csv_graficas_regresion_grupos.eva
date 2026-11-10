@@ -1,0 +1,46 @@
+# PRUEBA 2: leer un CSV, graficar, regresion lineal y agrupamiento (k-medias).
+# Datos del profe: datos/data.csv (edad, nivel_edu, ingreso_mensual, sex, anios_esc).
+# Para usar otro CSV: cambiar la ruta de cargar y los nombres de las columnas.
+# Correr: python run.py sustentacion/2_csv_graficas_regresion_grupos.eva
+programa "Prueba 2: CSV, graficas, regresion y grupos"
+
+personas = cargar "datos/data.csv"
+    |> quitar faltantes [edad, ingreso_mensual, anios_esc]
+    |> filtrar donde edad >= 18 y edad <= 60
+
+mostrar personas |> limitar 5
+mostrar personas |> resumir n = contar(), edad_media = media(edad),
+                            ingreso_medio = media(ingreso_mensual), anios_medios = media(anios_esc)
+mostrar "correlacion anios de estudio - ingreso: " + texto(redondear(correlacion(personas.anios_esc, personas.ingreso_mensual), 3))
+
+# --- Regresion lineal: ingreso = b + m * anios_esc (descenso de gradiente, square trick) ---
+lineal = regresion(personas, ["anios_esc"], "ingreso_mensual", 0.01, 3000)
+mostrar "b y m: " + texto(redondear(lineal.coeficientes, 2))
+mostrar "r2 = " + texto(redondear(lineal.r2, 3))
+mostrar "ingreso esperado con 16 anios de estudio: " + texto(redondear(predecir(lineal, [16]), 0))
+
+curva = tabla_de({"medicion": rango(longitud(lineal.perdidas)), "perdida": lineal.perdidas})
+graficar lineas de curva {
+    eje_x: medicion,
+    eje_y: perdida,
+    titulo: "Perdida de la regresion (error cuadratico)",
+    archivo: "salidas/prueba2_perdida.png"
+}
+graficar dispersion de personas {
+    eje_x: anios_esc,
+    eje_y: ingreso_mensual,
+    titulo: "Anios de estudio contra ingreso",
+    archivo: "salidas/prueba2_dispersion.png"
+}
+
+# --- Agrupamiento con k-medias (sin conocer la respuesta) ---
+muestra = personas |> limitar 1500
+agrupados = grupos(muestra, ["edad", "ingreso_mensual"], 3)
+mostrar agrupados |> agrupar por [grupo] |> resumir n = contar(), edad = media(edad), ingreso = media(ingreso_mensual) |> ordenar por [grupo asc]
+graficar dispersion de agrupados {
+    eje_x: edad,
+    eje_y: ingreso_mensual,
+    serie: grupo,
+    titulo: "Personas agrupadas con k-medias",
+    archivo: "salidas/prueba2_grupos.png"
+}

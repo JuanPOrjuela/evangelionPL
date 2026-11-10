@@ -1,0 +1,52 @@
+# Por que hay que escalar los datos antes del descenso de gradiente.
+# Datos reales: CO2 de Colombia (Our World in Data). Se quiere predecir
+# el CO2 (millones de toneladas, ~20 a 100) con el PIB (dolares, ~1e11).
+programa "Desborde sin escalar"
+
+co2 = cargar "datos/co2_latam.csv"
+    |> filtrar donde country == "Colombia"
+    |> quitar faltantes [gdp, co2]
+
+x = columna(co2, "gdp")
+emision = columna(co2, "co2")
+n = longitud(x)
+tasa = 0.01
+mostrar "filas: " + texto(n)
+mostrar "PIB: media " + texto(media(x)) + ", desviacion " + texto(desviacion(x))
+
+# --- 1) La regresion del lenguaje: escala por dentro, asi que funciona ---
+modelo = regresion(co2, ["gdp"], "co2", tasa, 5000)
+# la pendiente es diminuta (toneladas por dolar): se muestra por cada mil millones de dolares
+mostrar "regresion(): b = " + texto(modelo.coeficientes[0]) + ", m (por 1e9 dolares) = " + texto(modelo.coeficientes[1] * 1000000000)
+mostrar "r2 = " + texto(redondear(modelo.r2, 3))
+
+# --- 2) El mismo square trick a mano, CON escala (z = (x - media) / desviacion) ---
+mx = media(x)
+sx = desviacion(x)
+z = (x - mx) / sx
+m = 0
+b = 0
+para paso desde 0 hasta 4999 {
+    i = paso % n
+    diferencia = emision[i] - (m * z[i] + b)
+    m = m + tasa * z[i] * diferencia
+    b = b + tasa * diferencia
+}
+# de vuelta a dolares: m / desviacion y se corre el intercepto
+m_real = m / sx
+b_real = b - m_real * mx
+mostrar "a mano con escala: b = " + texto(b_real) + ", m (por 1e9 dolares) = " + texto(m_real * 1000000000)
+
+# --- 3) El mismo square trick SIN escalar: x vale ~1e11, x * x ~1e22 ---
+# Cada paso multiplica el error por algo como tasa * x^2 = 1e20, asi que
+# los pesos se disparan y en pocos pasos el numero no cabe en un real.
+m = 0
+b = 0
+para paso desde 0 hasta 49 {
+    i = paso % n
+    diferencia = emision[i] - (m * x[i] + b)
+    mostrar "paso " + texto(paso) + ": m = " + texto(m) + ", error^2 = " + texto(diferencia ^ 2)
+    m = m + tasa * x[i] * diferencia
+    b = b + tasa * diferencia
+}
+mostrar "si ves esto, no se desbordo"

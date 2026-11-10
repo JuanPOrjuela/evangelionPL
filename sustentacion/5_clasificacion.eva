@@ -1,0 +1,31 @@
+# PRUEBA 5: clasificacion. Predecir el nivel educativo con los anios de estudio y el ingreso,
+# con un arbol de decision (Gini, Grokking ML cap. 9) y con k vecinos (PROFECIA).
+# Correr: python run.py sustentacion/5_clasificacion.eva
+programa "Prueba 5: clasificacion"
+
+personas = cargar "datos/data.csv"
+    |> quitar faltantes [anios_esc, ingreso_mensual, nivel_edu]
+    |> crear nivel_edu = reemplazar(nivel_edu, "Prrimaria", "Primaria")
+    |> limitar 3000
+
+partes = dividir(personas, 0.8)
+entrena = partes[0]
+prueba = partes[1]
+mostrar "entrenamiento: " + texto(filas(entrena)) + " filas, prueba: " + texto(filas(prueba))
+
+decision = arbol(entrena, ["anios_esc", "ingreso_mensual"], "nivel_edu", 3)
+mostrar reglas(decision)
+r = predecir(decision, prueba)
+mostrar r |> seleccionar [anios_esc, ingreso_mensual, nivel_edu, prediccion] |> limitar 8
+mostrar "exactitud del arbol: " + texto(redondear(exactitud(r.nivel_edu, r.prediccion), 3))
+
+vecindad = prueba |> pronosticar nivel_edu por [anios_esc, ingreso_mensual] vecinos 5
+mostrar "exactitud de k vecinos (k = 5): " + texto(redondear(exactitud(vecindad.nivel_edu, vecindad.nivel_edu_prediccion), 3))
+
+# Dos clases con un perceptron sigmoide: gana mas que la mediana?
+mediana_ingreso = mediana(entrena.ingreso_mensual)
+entrena = entrena |> crear gana_mas = ingreso_mensual > mediana_ingreso
+prueba = prueba |> crear gana_mas = ingreso_mensual > mediana_ingreso
+neurona = perceptron(entrena, ["anios_esc", "edad"], "gana_mas", 0.5, 200, "sigmoide")
+r = predecir(neurona, prueba)
+mostrar "perceptron (gana mas que la mediana): " + texto(redondear(exactitud(r.gana_mas, r.prediccion), 3))

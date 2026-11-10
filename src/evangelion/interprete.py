@@ -35,8 +35,10 @@ MODELOS = {"regresion": (3, 6), "arbol": (3, 4), "perceptron": (3, 6), "red_neur
 CON_TABLA = ("regresion", "arbol", "perceptron", "red_neuronal", "grupos", "dividir")
 # Reciben una funcion escrita por el usuario
 NUMERICOS = {"derivada": (2, 2), "biseccion": (3, 3), "newton": (2, 2), "mapear": (2, 2)}
+# metodo("sen", "duplicacion") cambia con que metodo numerico se calcula una funcion
+AJUSTES = {"metodo": (1, 2)}
 TODAS = {**FUNCIONES, **{n: (1, 2 if n in DOS_ARGUMENTOS else 1) for n in MATEMATICAS},
-         **LISTAS, **MATRICES, **MODELOS, **NUMERICOS}
+         **LISTAS, **MATRICES, **MODELOS, **NUMERICOS, **AJUSTES}
 MAX_PROFUNDIDAD = 100     # llamadas de funciones una dentro de otra (recursion)
 SIN_RESULTADO = ("agregar", "semilla")   # cambian algo y no devuelven nada
 CONSTANTES = {"pi": matematica.PI, "e": matematica.E}
@@ -198,6 +200,7 @@ class Interprete(EvaVisitor):
         self._entrada = None     # lo que recibe la etapa que se esta ejecutando
         self._tabla = None       # tabla cuyas columnas se pueden nombrar ahora
         self.azar = matematica.Aleatorio()
+        matematica.reiniciar_metodos()   # cada programa empieza con Taylor, Newton...
 
     def ejecutar(self, arbol) -> None:
         self.visit(arbol)
@@ -998,6 +1001,10 @@ class Interprete(EvaVisitor):
                 return self._modelo(nombre, args)
             if nombre in NUMERICOS:
                 return self._numerico(ctx, nombre, args)
+            if nombre in AJUSTES:
+                if not all(isinstance(a, str) for a in args):
+                    raise ValueError('va con textos, como metodo("sen") o metodo("sen", "duplicacion")')
+                return matematica.metodo(*args)
         except (ValueError, TypeError, OverflowError, ZeroDivisionError) as error:
             raise ErrorSemantico(ctx, f"{nombre}(): {error}.")
         return self._llamar(ctx, nombre, args)
