@@ -70,6 +70,26 @@ python run.py ejemplos/01_primera_prueba.eva
 
 El mismo comando sirve en Windows y en Linux (en Linux puede ser `python3`).
 
+### Comando `eva` (opcional)
+
+Para escribir `eva programa.eva` en vez de `python run.py programa.eva`, en Windows se
+pega esto una sola vez en PowerShell y se vuelve a abrir la ventana (supone que el
+proyecto está en la carpeta del usuario y tiene su `.venv`):
+
+```powershell
+New-Item -ItemType Directory -Force (Split-Path $PROFILE) | Out-Null; Add-Content $PROFILE "`nfunction eva { & `"`$env:USERPROFILE\evangelionPL\.venv\Scripts\python.exe`" `"`$env:USERPROFILE\evangelionPL\run.py`" @args }"
+```
+
+En Linux: `alias eva="python3 $HOME/evangelionPL/run.py"` en `~/.bashrc`. Después,
+desde la carpeta del proyecto:
+
+```
+eva ejemplos/01_primera_prueba.eva
+eva sustentacion/3_perceptron_xor.eva
+```
+
+No es un archivo `.bat` ni cambia el proyecto: es un atajo en la terminal de cada uno.
+
 | Opción | Qué muestra |
 |---|---|
 | `--tokens` | Los tokens que entrega el lexer |
@@ -390,7 +410,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 423 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 439 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco
