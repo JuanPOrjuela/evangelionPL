@@ -193,7 +193,7 @@ en español; las dos hacen lo mismo y se pueden mezclar en un programa.
 | Evangelion | Español | Qué hace |
 |---|---|---|
 | `NERV "título"` | `programa "título"` | Nombre de la operación (opcional, primera línea) |
-| `ENTRY_PLUG "archivo.csv"` | `cargar "archivo.csv"` | Carga un CSV. Acepta `con { separador: ";" }` |
+| `ENTRY_PLUG "archivo.csv"` | `cargar "archivo.csv"` | Carga un CSV o TXT. Acepta `con { separador: ";", decimal: ",", codificacion: "latin-1" }` |
 | `TARGET [a, b]` | `seleccionar [a, b]` | Deja solo esas columnas |
 | `AT_FIELD donde condición` | `filtrar donde condición` | Filtra filas |
 | `SYNC col = expresión` | `crear col = expresión` | Crea columnas calculadas |
@@ -307,7 +307,7 @@ HOLOGRAM lineas de grandes {
 }
 ```
 
-![Gráfica de líneas del caso de estudio](caso_estudio/resultados/g2_lineas_co2_por_persona.png)
+La gráfica queda en `caso_estudio/resultados/` al correr `python run.py caso_estudio/co2_latam.eva`.
 
 | Tipo | Pide | Qué dibuja |
 |---|---|---|
@@ -410,7 +410,7 @@ están en `pyproject.toml`.
 python -m pytest
 ```
 
-Son 439 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
+Son 483 pruebas: tokens, precedencia, forma del árbol, cada etapa del flujo
 comparada con el resultado esperado, los errores de las tres clases, la librería
 de tablas por separado, los ejemplos completos de punta a punta y, en la fase 3,
 el compresor y el PNG comparados con la librería estándar de Python, los cinco
@@ -435,7 +435,7 @@ python regenerar.py
 
 `pruebas_sincronizacion.csv` y `combates.csv` son de práctica: los nombres salen
 de la serie y las cifras son inventadas. `co2_latam.csv` sí es real: viene de Our
-World in Data (CC BY 4.0) y se vuelve a bajar con `python caso_estudio/descargar_datos.py`.
+World in Data (CC BY 4.0): se tomaron solo los 12 países y las columnas que usa el caso de estudio.
 El lenguaje carga cualquier CSV.
 
 ---

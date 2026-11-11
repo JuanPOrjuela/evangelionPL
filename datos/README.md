@@ -16,7 +16,7 @@ cambiando la ruta en `ENTRY_PLUG`.
 
 | Archivo | Separador | Qué trae |
 |---|---|---|
-| `co2_latam.csv` | `,` | Emisiones de CO2, población, PIB y energía de 12 países de América Latina, 1970-2023 (648 filas). Fuente: Our World in Data, licencia CC BY 4.0. Se vuelve a bajar con `python caso_estudio/descargar_datos.py`. Detalle de cada columna en [`caso_estudio/README.md`](../caso_estudio/README.md). |
+| `co2_latam.csv` | `,` | Emisiones de CO2, población, PIB y energía de 12 países de América Latina, 1970-2023 (648 filas). Fuente: Our World in Data, licencia CC BY 4.0 (https://github.com/owid/co2-data). Detalle de cada columna en [`caso_estudio/README.md`](../caso_estudio/README.md). |
 
 ## Datos del profesor
 

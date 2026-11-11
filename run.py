@@ -1,6 +1,6 @@
 """Lanzador: python run.py ejemplos/01_primera_prueba.eva
 
-Es el unico archivo con una importacion de Python: sys es la unica forma que da Python
+Es el unico archivo con una importacion de Python, sys es la unica forma que da Python
 de recibir lo que se escribe en la linea de comandos. El lenguaje no usa sys para nada mas.
 """
 

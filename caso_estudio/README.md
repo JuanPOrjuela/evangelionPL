@@ -32,9 +32,9 @@ Las columnas vienen en inglés, tal como las publica la fuente:
 | `energy_per_capita` | Consumo de energía primaria por persona | kWh |
 | `share_global_co2` | Parte del CO2 mundial | % |
 
-El archivo completo de la fuente pesa 14 MB. [`descargar_datos.py`](descargar_datos.py)
-lo baja otra vez y solo recorta filas y columnas: el renombrado, la limpieza
-y todos los cálculos los hace el programa en evangelionPL.
+El archivo completo de la fuente (https://github.com/owid/co2-data) pesa 14 MB; en
+`datos/co2_latam.csv` solo quedaron los 12 países y estas columnas. El renombrado, la
+limpieza y todos los cálculos los hace el programa en evangelionPL.
 
 **Faltantes:** `gdp` no tiene 2023 (12 filas), `coal_co2` y `gas_co2` faltan
 en 145 y 136 filas y `energy_per_capita` en 40. Las columnas de CO2 total y per
@@ -66,10 +66,12 @@ Después, `DIAGNOSTIC` imprime cuántos datos válidos y faltantes tiene cada co
 
 ## 4. Indicadores
 
+Al correr el programa quedan en `caso_estudio/resultados/`:
+
 | Archivo | Qué trae |
 |---|---|
-| [`resultados/emisiones_2023.csv`](resultados/emisiones_2023.csv) | CO2 total, per cápita y parte del mundo de cada país en 2023, de mayor a menor |
-| [`resultados/resumen_por_pais.csv`](resultados/resumen_por_pais.csv) | Por país: años con datos, media, máximo y desviación del CO2 per cápita en 1970-2023 |
+| `emisiones_2023.csv` | CO2 total, per cápita y parte del mundo de cada país en 2023, de mayor a menor |
+| `resumen_por_pais.csv` | Por país: años con datos, media, máximo y desviación del CO2 per cápita en 1970-2023 |
 
 Además, el programa calcula el CO2 por persona de Colombia en 2023 (1,72 t) y
 el promedio simple de los 12 países (2,59 t), y con `PATTERN_BLUE` imprime cuál
@@ -77,19 +79,15 @@ de los dos es mayor.
 
 ## 5. Gráficas
 
+Se generan al correr el programa, también en `caso_estudio/resultados/`:
+
 | | Tipo | Archivo |
 |---|---|---|
-| G1 | Barras | [`g1_barras_emisiones_2023.png`](resultados/g1_barras_emisiones_2023.png) |
-| G2 | Líneas (una por país) | [`g2_lineas_co2_por_persona.png`](resultados/g2_lineas_co2_por_persona.png), y también en [SVG](resultados/g2_lineas_co2_por_persona.svg) |
-| G3 | Histograma | [`g3_histograma_co2_por_persona.png`](resultados/g3_histograma_co2_por_persona.png) |
-| G4 | Dispersión (un color por país) | [`g4_dispersion_pib_vs_co2.png`](resultados/g4_dispersion_pib_vs_co2.png) |
-| G5 | Caja (una por década) | [`g5_caja_por_decada.png`](resultados/g5_caja_por_decada.png) |
-
-![G1](resultados/g1_barras_emisiones_2023.png)
-![G2](resultados/g2_lineas_co2_por_persona.png)
-![G3](resultados/g3_histograma_co2_por_persona.png)
-![G4](resultados/g4_dispersion_pib_vs_co2.png)
-![G5](resultados/g5_caja_por_decada.png)
+| G1 | Barras | `g1_barras_emisiones_2023.png` |
+| G2 | Líneas (una por país) | `g2_lineas_co2_por_persona.png`, y también en SVG |
+| G3 | Histograma | `g3_histograma_co2_por_persona.png` |
+| G4 | Dispersión (un color por país) | `g4_dispersion_pib_vs_co2.png` |
+| G5 | Caja (una por década) | `g5_caja_por_decada.png` |
 
 ## 6. Qué muestran los resultados
 
@@ -134,7 +132,6 @@ dice qué causa qué.
 Desde la carpeta del proyecto, con el entorno instalado:
 
 ```
-python caso_estudio/descargar_datos.py    # opcional: baja la versión más nueva de los datos
 python run.py caso_estudio/co2_latam.eva  # escribe todo en caso_estudio/resultados/
 ```
 

@@ -1,6 +1,6 @@
 """Regenera el lexer y el parser a partir de grammar/Eva.g4.
 
-Solo hace falta si se cambia la gramatica. Necesita Java 11 o superior;
+Solo hace falta si se cambia la gramatica. 
 el .jar de ANTLR se descarga solo la primera vez.
 
     python regenerar.py
@@ -17,7 +17,7 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
 SALIDA = RAIZ / "src" / "evangelion" / "generado"
-VERSION = "4.13.2"  # la misma del runtime que instala instalar.sh
+VERSION = "4.13.2"  # la misma del runtime de antlr4 que pide pyproject.toml
 JAR = RAIZ / "herramientas" / f"antlr-{VERSION}-complete.jar"
 URL = f"https://repo1.maven.org/maven2/org/antlr/antlr4/{VERSION}/antlr4-{VERSION}-complete.jar"
 

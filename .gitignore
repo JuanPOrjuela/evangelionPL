@@ -12,3 +12,7 @@ herramientas/
 
 # archivos intermedios del manual
 docs/manual.html
+
+# lo genera python run.py caso_estudio/co2_latam.eva
+caso_estudio/resultados/*
+!caso_estudio/resultados/.gitkeep
