@@ -351,18 +351,38 @@ class Tabla:
         candidatos = Lista(i for i in range(len(self))
                      if objetivos[i] is not None and None not in vectores[i])
 
+        # cada vecina posible con su vector ya listo, para no ir a buscarlo en cada comparacion
+        vecinas = Lista((j, tuple(vectores[j]), objetivos[j]) for j in candidatos)
+
         predicciones = Lista()
-        for i in range(len(self)):
-            if None in vectores[i]:
+        for i, vector in enumerate(vectores):
+            if None in vector:
                 predicciones.agregar(None)   # sin predictoras completas no se puede predecir
                 continue
-            distancias = Lista()
-            for j in candidatos:
+            propio = tuple(vector)
+            # no hace falta ordenar todas las distancias: se guardan solo las k menores, de menor
+            # a mayor. Con un empate queda primero la fila que venia primero, igual que al ordenar.
+            cercanas, limite = Lista(), None    # limite = la mayor distancia guardada cuando ya hay k
+            for j, otro, objetivo_vecina in vecinas:
                 if j == i:
                     continue   # leave-one-out: una fila nunca es vecina de si misma
-                suma = sum((a - b) ** 2 for a, b in zip(vectores[i], vectores[j]))
-                distancias.agregar((suma ** 0.5, objetivos[j]))
-            vecinos = Lista(valor for _, valor in ordenada(distancias, key=lambda par: par[0])[:k])
+                suma = 0
+                for a, b in zip(propio, otro):
+                    suma += (a - b) ** 2
+                distancia = suma ** 0.5
+                if limite is not None and distancia >= limite:
+                    continue
+                posicion = len(cercanas)
+                for guardada, _ in reversed(cercanas):
+                    if guardada <= distancia:
+                        break
+                    posicion -= 1
+                cercanas.insertar(posicion, (distancia, objetivo_vecina))
+                if len(cercanas) > k:
+                    cercanas.sacar()
+                if len(cercanas) == k:
+                    limite = cercanas[-1][0]
+            vecinos = Lista(valor for _, valor in cercanas)
             if not vecinos:
                 predicciones.agregar(None)
             elif es_numerico:
@@ -425,23 +445,71 @@ def partir_csv(texto: str, separador: str = ",") -> Lista:
     return Lista(f for f in filas if f != Lista(("",)))   # las lineas en blanco no cuentan
 
 
-def inferir(textos: Lista) -> Lista:
-    """Decide si una columna es de enteros, de reales o de texto. Vacio = faltante."""
+def inferir(textos: Lista, decimal: str = ".") -> Lista:
+    """Decide si una columna es de enteros, de reales o de texto. Vacio = faltante.
+    Con decimal="," un 1,5 se lee como 1.5 (asi guarda los numeros Excel en espanol)."""
     limpios = Lista(t.strip() for t in textos)
-    for patron, convertir in ((es_entero_texto, int), (es_real_texto, float)):
-        if all(t == "" or patron(t) for t in limpios):
-            return Lista(None if t == "" else convertir(t) for t in limpios)
+    if all(t == "" or es_entero_texto(t) for t in limpios):
+        return Lista(None if t == "" else int(t) for t in limpios)
+    if decimal != ".":
+        # un numero que ya trae punto (1.234,5) no se toca: quedaria como texto
+        limpios = Lista(t if "." in t else t.replace(decimal, ".") for t in limpios)
+    if all(t == "" or es_real_texto(t) for t in limpios):
+        return Lista(None if t == "" else float(t) for t in limpios)
     return Lista(None if t == "" else t for t in textos)
 
 
-def leer_csv(ruta, separador: str = ",", codificacion: str = "utf-8", encabezado: bool = True) -> Tabla:
+SEPARADORES_COMUNES = {",": "una coma", ";": "un punto y coma", "\t": "un tabulador", "|": "una barra |"}
+
+
+def _otro_separador(encabezado: str, separador: str):
+    """Si todo el encabezado quedo en una sola columna pero trae otro separador conocido,
+    lo mas seguro es que el archivo este separado con ese."""
+    for candidato in SEPARADORES_COMUNES:
+        if candidato != separador and candidato in encabezado:
+            return candidato
+    return None
+
+
+def _leer_texto(ruta, codificacion) -> str:
+    """El texto del archivo. Sin codificacion se prueba utf-8 y, si no es, latin-1
+    (como guarda Excel los CSV con tildes)."""
+    try:
+        with open(ruta, encoding=codificacion or "utf-8", newline="") as archivo:
+            return archivo.read()
+    except LookupError:
+        raise ValueError(f"la codificación '{codificacion}' no existe; las más comunes son "
+                         '"utf-8" y "latin-1"')
+    except UnicodeDecodeError:
+        if codificacion is not None:
+            raise ValueError(f"el archivo no está en {codificacion}; prueba con "
+                             '{ codificacion: "latin-1" } o con { codificacion: "utf-8" }')
+    with open(ruta, encoding="latin-1", newline="") as archivo:
+        return archivo.read()
+
+
+def leer_csv(ruta, separador: str = ",", codificacion: str = None, encabezado: bool = True,
+             decimal: str = ".") -> Tabla:
     if not isinstance(separador, str) or separador == "":
         raise ValueError("el separador tiene que ser un texto de al menos un carácter")
-    with open(ruta, encoding=codificacion, newline="") as archivo:
-        filas = partir_csv(archivo.read().lstrip("﻿"), separador)
+    if codificacion is not None and not isinstance(codificacion, str):
+        raise ValueError('la codificación va como texto, por ejemplo "utf-8" o "latin-1"')
+    if decimal not in (".", ","):
+        raise ValueError('decimal va con "," o con "."')
+    if decimal == separador:
+        raise ValueError(f"el separador y el decimal no pueden ser los dos '{decimal}'; si los números "
+                         'traen coma decimal, el separador suele ser ";"')
+    filas = partir_csv(_leer_texto(ruta, codificacion).lstrip("\ufeff"), separador)
     if not filas:
         raise ValueError("el archivo está vacío")
 
+    if len(filas[0]) == 1:
+        otro = _otro_separador(filas[0][0], separador)
+        if otro is not None:
+            escrito = "\\t" if otro == "\t" else otro
+            raise ValueError(f"con el separador '{separador}' todo quedó en una sola columna; parece que "
+                             f"el archivo está separado con {SEPARADORES_COMUNES[otro]}: "
+                             f'usa con {{ separador: "{escrito}" }}')
     if encabezado:
         nombres, filas = Lista(n.strip() for n in filas[0]), filas[1:]
     else:
@@ -452,7 +520,7 @@ def leer_csv(ruta, separador: str = ",", codificacion: str = "utf-8", encabezado
         if len(fila) != len(nombres):
             raise ValueError(f"la fila {numero} trae {len(fila)} datos y se esperaban {len(nombres)}")
 
-    return Tabla(nombres, {nombre: inferir(Lista(fila[i] for fila in filas))
+    return Tabla(nombres, {nombre: inferir(Lista(fila[i] for fila in filas), decimal)
                            for i, nombre in enumerate(nombres)})
 
 

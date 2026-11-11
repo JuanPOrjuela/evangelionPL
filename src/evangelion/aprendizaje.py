@@ -194,24 +194,48 @@ def grupos(tabla: Tabla, variables, k: int, semilla: int = 42) -> Tabla:
 
 def _k_medias(puntos: Lista, centros: Lista) -> tuple:
     asignacion = None
+    fijos = Lista(tuple(p) for p in puntos)     # los puntos no cambian: se leen mas rapido asi
     for _ in range(MAX_VUELTAS):
-        nueva = Lista(min(range(len(centros)), key=lambda c: matrices.distancia(p, centros[c])) for p in puntos)
+        actuales = tuple(tuple(c) for c in centros)
+        nueva = Lista(_centro_mas_cercano(p, f, centros, actuales) for p, f in zip(puntos, fijos))
         if nueva == asignacion:
             break
         asignacion = nueva
         for c in range(len(centros)):
-            miembros = Lista(p for p, g in zip(puntos, asignacion) if g == c)
+            miembros = Lista(f for f, g in zip(fijos, asignacion) if g == c)
             if miembros:  # un grupo vacio deja su centro donde estaba
                 centros[c] = Lista(sum(m[j] for m in miembros) / len(miembros) for j in range(len(miembros[0])))
     return asignacion, centros
+
+
+def _centro_mas_cercano(punto: Lista, fijo: tuple, centros: Lista, actuales: tuple) -> int:
+    """El numero del centro mas cercano al punto. Para comparar basta la suma de cuadrados
+    (sin la raiz, que es lo lento): la distancia de verdad solo se calcula cuando los dos
+    centros mas cercanos quedan casi empatados, para decidir igual que con las distancias."""
+    mejor, menor, segunda = 0, None, None
+    for c, centro in enumerate(actuales):
+        suma = 0
+        for x, y in zip(fijo, centro):
+            suma += (x - y) * (x - y)
+        if menor is None or suma < menor:
+            mejor, menor, segunda = c, suma, menor
+        elif segunda is None or suma < segunda:
+            segunda = suma
+    if segunda is None or segunda > menor * 1.000001:
+        return mejor
+    return min(range(len(centros)), key=lambda c: matrices.distancia(punto, centros[c]))
 
 
 def _centros_iniciales(puntos: Lista, k: int, azar: Aleatorio) -> Lista:
     """k-medias++: el primer centro al azar y cada siguiente con mas probabilidad
     entre mas lejos este de los centros que ya hay."""
     centros = Lista((puntos[azar.entero(0, len(puntos) - 1)],))
+    cercania = None     # distancia de cada punto al centro que le queda mas cerca
     while len(centros) < k:
-        pesos = Lista(min(matrices.distancia(p, c) for c in centros) ** 2 for p in puntos)
+        # solo se mide contra el centro nuevo: con los anteriores ya se habia medido
+        nuevas = Lista(matrices.distancia(p, centros[-1]) for p in puntos)
+        cercania = nuevas if cercania is None else Lista(min(a, b) for a, b in zip(cercania, nuevas))
+        pesos = Lista(c ** 2 for c in cercania)
         total = sum(pesos)
         if total == 0:  # todos los puntos que quedan son iguales a algun centro
             centros.agregar(puntos[len(centros)])
@@ -571,8 +595,12 @@ def _adelante(modelo: dict, fila: Lista) -> tuple:
 def correlacion(a, b) -> float:
     """Coeficiente de Pearson: 1 suben juntos, -1 uno sube y el otro baja, 0 sin relacion lineal."""
     a, b = _pareja(a, b)
-    if any(not es_numero(v) for v in a + b):
-        raise ValueError("la correlación necesita números sin datos faltantes")
+    if any(v is not None and not es_numero(v) for v in a + b):
+        raise ValueError("la correlación se calcula entre dos columnas de números y una de las dos "
+                         "tiene texto")
+    if any(v is None for v in a + b):
+        raise ValueError("hay celdas vacías en una de las dos columnas; quítalas antes con "
+                         "quitar faltantes [columna]")
     ma, mb = sum(a) / len(a), sum(b) / len(b)
     cov = sum((x - ma) * (y - mb) for x, y in zip(a, b))
     va = sum((x - ma) ** 2 for x in a)

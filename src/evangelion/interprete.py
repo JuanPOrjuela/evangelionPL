@@ -46,7 +46,7 @@ MAX_VUELTAS = 1_000_000   # un ciclo que da mas vueltas seguramente nunca termin
 ELEMENTOS_EN_PANTALLA = 20
 TIPOS = ("entero", "real", "texto", "booleano")
 GRAFICAS = graficas.TIPOS
-OPCIONES_CARGA = ("separador", "codificacion", "encabezado")
+OPCIONES_CARGA = ("separador", "codificacion", "encabezado", "decimal")
 OPCIONES_GRAFICA = ("eje_x", "eje_y", "serie", "titulo", "etiqueta_x", "etiqueta_y", "archivo",
                     "color", "intervalos", "ancho", "alto", "leyenda")
 EJES = ("eje_x", "eje_y", "serie")
@@ -64,6 +64,15 @@ class Funcion:
         self.nombre = nombre
         self.parametros = parametros
         self.cuerpo = cuerpo      # el nodo bloque del arbol, se visita en cada llamada
+
+
+class Nativa:
+    """Una funcion matematica del lenguaje (sen, raiz, ...) cuando se pasa como argumento:
+    derivada(sen, 0) o mapear(raiz, lista)."""
+
+    def __init__(self, nombre: str):
+        self.nombre = nombre
+        self.parametros = Lista(("x",))
 
 
 class Retorno(Exception):
@@ -97,7 +106,7 @@ def clase_de(valor) -> str:
         return "lista"
     if isinstance(valor, dict):
         return "diccionario"
-    if isinstance(valor, Funcion):
+    if isinstance(valor, (Funcion, Nativa)):
         return "funcion"
     return "numero" if es_numero(valor) else "texto"
 
@@ -171,7 +180,7 @@ def texto_de(valor, dentro: bool = False) -> str:
         return f'"{valor}"'
     if isinstance(valor, Tabla):
         return f"<tabla de {len(valor)} filas>"
-    if isinstance(valor, Funcion):
+    if isinstance(valor, (Funcion, Nativa)):
         return f"<función {valor.nombre}({', '.join(valor.parametros)})>"
     if isinstance(valor, Lista):
         partes = Lista(texto_de(v, True) for v in valor[:ELEMENTOS_EN_PANTALLA])
@@ -452,6 +461,8 @@ class Interprete(EvaVisitor):
 
     def _como_python(self, ctx, funcion, nombre: str):
         """Envuelve una funcion del usuario para que la usen los metodos numericos."""
+        if isinstance(funcion, Nativa):
+            return MATEMATICAS[funcion.nombre]
         if not isinstance(funcion, Funcion):
             raise ErrorSemantico(ctx, f"{nombre}() recibe primero una función, por ejemplo {nombre}(f, ...), "
                                       f"y llegó {describir(funcion)}.")
@@ -467,6 +478,8 @@ class Interprete(EvaVisitor):
     def _numerico(self, ctx, nombre, args):
         if nombre == "mapear":
             # aplica la funcion a cada elemento; con una columna devuelve otra columna
+            if isinstance(args[0], Nativa) and isinstance(args[1], (Lista, Columna)):
+                return self._matematica(ctx, args[0].nombre, Lista((args[1],)))
             if not isinstance(args[0], Funcion) or not isinstance(args[1], (Lista, Columna)):
                 raise ValueError("va así: mapear(funcion, lista) o mapear(funcion, columna)")
             if isinstance(args[1], Columna):
@@ -500,11 +513,13 @@ class Interprete(EvaVisitor):
         ruta = quitar_comillas(ctx.CADENA().getText())
         opciones = self._opciones(ctx.opcion(), OPCIONES_CARGA)
         if not existe(ruta):
-            raise ErrorSemantico(ctx.CADENA().symbol, f"no existe el archivo '{ruta}'.")
+            raise ErrorSemantico(ctx.CADENA().symbol, f"no existe el archivo '{ruta}'. Las rutas se buscan "
+                                                      "desde la carpeta donde corres el programa.")
         try:
             return leer_csv(ruta, separador=opciones.get("separador", ","),
-                            codificacion=opciones.get("codificacion", "utf-8"),
-                            encabezado=opciones.get("encabezado", True) is not False)
+                            codificacion=opciones.get("codificacion"),
+                            encabezado=opciones.get("encabezado", True) is not False,
+                            decimal=opciones.get("decimal", "."))
         except (ValueError, LookupError, TypeError, OSError) as error:
             raise ErrorSemantico(ctx, f"no se pudo leer '{ruta}': {error}.")
 
@@ -774,6 +789,8 @@ class Interprete(EvaVisitor):
             return simbolo.valor
         if nombre in CONSTANTES:
             return CONSTANTES[nombre]
+        if nombre in MATEMATICAS:
+            return Nativa(nombre)       # el nombre solo, sin parentesis: la funcion como valor
         if self._tabla is not None:
             raise ErrorSemantico(ctx, f"'{nombre}' no es una columna de la tabla ni una variable."
                                  + sugerir(nombre, self._tabla.columnas))
@@ -967,6 +984,8 @@ class Interprete(EvaVisitor):
         simbolo = self.simbolos.buscar(nombre)
         if simbolo is not None and isinstance(simbolo.valor, Funcion):
             return self._invocar(ctx, simbolo.valor, args)
+        if simbolo is not None and isinstance(simbolo.valor, Nativa):
+            nombre = simbolo.valor.nombre      # f = sen ... f(2) es lo mismo que sen(2)
 
         if nombre in AGREGACIONES:
             if len(args) == 1 and isinstance(args[0], Lista):
@@ -996,6 +1015,8 @@ class Interprete(EvaVisitor):
             if nombre in LISTAS:
                 return self._lista(ctx, nombre, args)
             if nombre in MATRICES:
+                # una columna sirve de vector: punto(tabla.a, tabla.b)
+                args = Lista(Lista(a.valores) if isinstance(a, Columna) else a for a in args)
                 return getattr(matrices, nombre)(*args)
             if nombre in MODELOS:
                 return self._modelo(nombre, args)
@@ -1101,6 +1122,8 @@ class Interprete(EvaVisitor):
 
     @staticmethod
     def _a_numero(valor):
+        if isinstance(valor, Columna):
+            return valor._cada(Interprete._a_numero)     # numero(columna) convierte cada celda
         if es_numero(valor):
             return valor
         if isinstance(valor, str):
@@ -1109,12 +1132,19 @@ class Interprete(EvaVisitor):
                 return int(texto)
             if es_real_texto(texto, con_exponente=False):
                 return float(texto)
-        raise ValueError(f"no se pudo convertir {texto_de(valor, True)} en número")
+        if isinstance(valor, str):
+            raise ValueError(f"no se pudo convertir {texto_de(valor, True)} en número")
+        raise ValueError(f"convierte un texto en número y llegó {describir(valor)}")
 
     def _modelo(self, nombre, args):
         if nombre in CON_TABLA and not isinstance(args[0], Tabla):
             raise ValueError(f"el primer argumento tiene que ser una tabla y llegó {describir(args[0])}")
-        return getattr(aprendizaje, nombre)(*args)
+        modelo = getattr(aprendizaje, nombre)(*args)
+        if nombre == "regresion" and (modelo["r2"] < 0 or modelo["perdidas"][-1] > modelo["perdidas"][0]):
+            # el resultado no se toca: solo se avisa que el descenso de gradiente no llego a nada bueno
+            print("AVISO: la regresión no mejoró (r2 = " + texto_de(modelo["r2"]) + "). La tasa parece muy "
+                  "grande; prueba con una más pequeña (p. ej. 0.001) y más épocas.\n")
+        return modelo
 
     def _llamar(self, ctx, nombre, args):
         valor = args[0]

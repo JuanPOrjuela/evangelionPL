@@ -23,7 +23,11 @@ funcion distancia(d) {
     si d < 0 { retornar -d }
     retornar d
 }
-mostrar "diferencia mas grande entre los dos metodos: " + texto(maximo(mapear(distancia, antes - despues)))
+# Los dos metodos coinciden hasta el decimal 15, y mostrar enseña solo 4 decimales,
+# asi que la diferencia se multiplica por 10^15 para que se vea que si cambio.
+mostrar "diferencia entre los dos metodos (x 10^15):"
+mostrar (antes - despues) * 10 ^ 15
+mostrar "diferencia mas grande (x 10^15): " + texto(maximo(mapear(distancia, antes - despues)) * 10 ^ 15)
 
 # Todo lo que usa esas funciones cambia tambien (por ejemplo tanh usa exp)
 mostrar tanh(0.5)

@@ -73,7 +73,7 @@ class RecolectorDeErrores(ErrorListener):
 
 def _es_reservada(texto: str) -> str:
     return (f"'{texto}' es una palabra reservada y no sirve como nombre. "
-            f"Si es una columna, escríbela entre acentos graves: `{texto}`.")
+            f"Si es una columna, escríbela entre acentos graves: `{texto}`; si es una variable, usa otro nombre.")
 
 
 def traducir(msg: str, texto) -> str:
@@ -85,7 +85,12 @@ def traducir(msg: str, texto) -> str:
         return f"no se esperaba {_citar(texto)}. Aquí debería ir {_esperado(crudo)}."
     if msg.startswith("missing"):
         falta = msg[len("missing"):].partition(" at ")[0]
-        return f"falta {_esperado(falta)} antes de {_citar(texto)}."
+        mensaje = f"falta {_esperado(falta)} antes de {_citar(texto)}."
+        if texto in RESERVADAS and "ID" in falta:
+            # tabla.y: se quiso usar una palabra reservada como nombre de columna
+            mensaje += (f" '{texto}' es una palabra reservada: escríbela entre acentos graves "
+                        f"(`{texto}`) o usa otro nombre.")
+        return mensaje
     if msg.startswith("no viable alternative"):
         return f"no entiendo la instrucción cerca de {_citar(texto)}."
     return msg

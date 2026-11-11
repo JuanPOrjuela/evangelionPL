@@ -37,6 +37,21 @@ class Lista:
         self._ultimo = nodo
         self._largo += 1
 
+    def insertar(self, posicion: int, valor) -> None:
+        """Mete el valor antes de esa posicion; con posicion = largo queda de ultimo."""
+        if posicion == self._largo:
+            self.agregar(valor)
+            return
+        siguiente = self._nodo(posicion)
+        nodo = _Nodo(valor, siguiente.anterior, siguiente)
+        if siguiente.anterior is None:
+            self._primero = nodo
+        else:
+            siguiente.anterior.siguiente = nodo
+        siguiente.anterior = nodo
+        self._largo += 1
+        self._cursor = None    # las posiciones se corrieron
+
     def extender(self, elementos) -> None:
         for elemento in elementos:
             self.agregar(elemento)

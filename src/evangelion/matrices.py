@@ -24,7 +24,7 @@ def forma(valor) -> Lista:
         return Lista((len(valor), len(valor[0])))
     if isinstance(valor, Lista):
         return Lista((len(valor),))
-    raise ValueError("forma() necesita una lista o una matriz")
+    raise ValueError("necesita una lista o una matriz")
 
 
 def operar(a, b, funcion):
@@ -88,7 +88,7 @@ def transpuesta(m: Lista) -> Lista:
 def punto(a: Lista, b: Lista):
     """Producto punto de dos vectores: a1*b1 + a2*b2 + ..."""
     if not es_vector(a) or not es_vector(b):
-        raise ValueError("punto() necesita dos listas de números")
+        raise ValueError("necesita dos listas de números sin datos faltantes, como punto([1, 2], [3, 4])")
     if len(a) != len(b):
         raise ValueError(f"los vectores no tienen el mismo largo ({len(a)} y {len(b)})")
     return suma_de_productos(a, b)
@@ -122,14 +122,14 @@ def producto(a: Lista, b: Lista) -> Lista:
 
 def _exigir_matriz(m, funcion: str) -> None:
     if not es_matriz(m):
-        raise ValueError(f"{funcion}() necesita una matriz (una lista de filas del mismo largo, "
+        raise ValueError("necesita una matriz (una lista de filas del mismo largo, "
                          "todas con números)")
 
 
 def _exigir_cuadrada(m, funcion: str) -> None:
     _exigir_matriz(m, funcion)
     if len(m) != len(m[0]):
-        raise ValueError(f"{funcion}() necesita una matriz cuadrada y esta es de {len(m)}x{len(m[0])}")
+        raise ValueError(f"necesita una matriz cuadrada y esta es de {len(m)}x{len(m[0])}")
 
 
 def _eliminacion(m: Lista, extra: Lista):
@@ -177,7 +177,7 @@ def resolver(a: Lista, b: Lista) -> Lista:
     """Resuelve el sistema A x = b y devuelve x."""
     _exigir_cuadrada(a, "resolver")
     if not es_vector(b) or len(b) != len(a):
-        raise ValueError(f"resolver() necesita una lista de {len(a)} números al lado derecho")
+        raise ValueError(f"necesita una lista de {len(a)} números al lado derecho")
     _, x, _ = _eliminacion(a, Lista(Lista((v,)) for v in b))
     if x is None:
         raise ValueError("el sistema no tiene una única solución (el determinante es 0)")
