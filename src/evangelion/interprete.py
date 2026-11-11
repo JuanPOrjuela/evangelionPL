@@ -257,9 +257,13 @@ class Interprete(EvaVisitor):
         if isinstance(valor, Columna):
             nombre = valor.nombre or "columna"
             valor = Tabla(Lista((nombre,)), {nombre: valor.valores})
-        # si el flujo es solo un nombre lo usamos de titulo
-        texto = ctx.flujo().getText()
-        titulo = " " + texto if texto.isidentifier() else ""
+        # si el flujo es solo un nombre (un unico token ID) lo usamos de titulo;
+        # getText() junta los tokens sin espacios, asi que "falso o verdadero"
+        # parecia el nombre "falsooverdadero"
+        flujo = ctx.flujo()
+        texto = flujo.getText()
+        un_nombre = flujo.start is flujo.stop and flujo.start.type == EvaParser.ID
+        titulo = " " + texto if un_nombre else ""
         textos = isinstance(valor, Lista) and valor and all(isinstance(v, str) for v in valor)
         if textos and len(texto_de(valor)) > 100:
             # una lista larga de textos (como las reglas de un arbol) va una por linea
