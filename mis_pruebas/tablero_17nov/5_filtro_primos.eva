@@ -1,0 +1,26 @@
+# 5) Filtro funcional para datos de tipo primo.
+# Sin ciclos ni variables que cambian: es_primo es recursiva y se le pasa a filtrar().
+programa "Filtro de primos"
+
+# hay_divisor(n, d): algun numero desde d hasta raiz(n) divide a n?
+funcion hay_divisor(n, d) {
+    si d * d > n { retornar falso }
+    si n % d == 0 { retornar verdadero }
+    retornar hay_divisor(n, d + 1)
+}
+
+funcion es_primo(n) {
+    si n < 2 { retornar falso }
+    retornar no hay_divisor(n, 2)
+}
+
+# En una lista
+mostrar filtrar(es_primo, rango(1, 100))
+mostrar longitud(filtrar(es_primo, rango(1, 100)))
+
+# En los datos: las personas cuya edad es un numero primo
+datos = cargar "datos/data.csv"
+funcion edad_prima(fila) { retornar es_primo(fila["edad"]) }
+primos = filtrar(edad_prima, datos)
+mostrar "personas con edad prima: " + texto(filas(primos))
+mostrar primos |> agrupar por [edad] |> resumir n = contar() |> ordenar por [edad asc]

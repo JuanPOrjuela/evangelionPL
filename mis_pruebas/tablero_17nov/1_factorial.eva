@@ -1,0 +1,25 @@
+# 1) Funcion que calcula el factorial, para los numeros del 5 al 100
+programa "Factorial del 5 al 100"
+
+# con un ciclo
+funcion factorial_ciclo(n) {
+    resultado = 1
+    para i desde 2 hasta n {
+        resultado = resultado * i
+    }
+    retornar resultado
+}
+
+# con recursion: n! = n * (n - 1)!
+funcion factorial_rec(n) {
+    si n <= 1 { retornar 1 }
+    retornar n * factorial_rec(n - 1)
+}
+
+para n desde 5 hasta 100 {
+    mostrar texto(n) + "! = " + texto(factorial_ciclo(n))
+}
+
+# las dos formas dan lo mismo (y tambien la factorial() del lenguaje)
+mostrar factorial_rec(20) == factorial_ciclo(20)
+mostrar factorial_ciclo(100) == factorial(100)

@@ -1,0 +1,24 @@
+# 2) Visualizar la funcion sigmoide: s(x) = 1 / (1 + e^(-x))
+programa "Funcion sigmoide"
+
+funcion sigmoide(x) { retornar 1 / (1 + exp(-x)) }
+
+# x de -10 a 10 en pasos de 0.25
+xs = []
+para i desde -40 hasta 40 {
+    agregar(xs, i / 4)
+}
+curva = tabla_de({"x": xs, "sigmoide": mapear(sigmoide, xs)})
+
+mostrar sigmoide(0)        # 0.5: el centro
+mostrar sigmoide(10)       # casi 1
+mostrar sigmoide(-10)      # casi 0
+
+graficar lineas de curva {
+    eje_x: x,
+    eje_y: sigmoide,
+    titulo: "Funcion sigmoide 1 / (1 + exp(-x))",
+    etiqueta_x: "x",
+    etiqueta_y: "sigmoide(x)",
+    archivo: "salidas/tablero_sigmoide.png"
+}

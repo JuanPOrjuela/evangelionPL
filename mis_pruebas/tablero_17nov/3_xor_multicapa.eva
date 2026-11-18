@@ -1,0 +1,56 @@
+# 3) Perceptron multicapa (red neuronal) para XOR: graficas y estimador
+programa "Perceptron multicapa para XOR"
+
+xor = tabla_de({"a": [0, 0, 1, 1], "b": [0, 1, 0, 1], "salida": [0, 1, 1, 0]})
+mostrar xor
+
+# Un perceptron solo (una recta) no puede con XOR
+neurona = perceptron(xor, ["a", "b"], "salida", 0.1, 500, "sigmoide")
+mostrar "perceptron simple: exactitud " + texto(neurona.exactitud)
+
+# Red: 2 entradas -> 4 neuronas ocultas (sigmoide) -> salida (softmax), 3000 epocas
+red = red_neuronal(xor, ["a", "b"], "salida", 4, 0.5, 3000)
+mostrar "red neuronal: exactitud " + texto(red.exactitud)
+mostrar "perdida al inicio: " + texto(red.perdidas[0]) + ", al final: " + texto(red.perdida)
+
+# El estimador: lo que predice la red para cada caso de XOR
+estimado = predecir(red, xor)
+mostrar estimado
+
+# Grafica 1: la perdida baja epoca a epoca (la red esta aprendiendo)
+curva = tabla_de({"epoca": rango(longitud(red.perdidas)), "perdida": red.perdidas})
+graficar lineas de curva {
+    eje_x: epoca,
+    eje_y: perdida,
+    titulo: "Perdida de la red con XOR",
+    archivo: "salidas/tablero_xor_perdida.png"
+}
+
+# Grafica 2: frontera de decision. Se le pregunta a la red por una malla de puntos
+# entre 0 y 1 y se pinta cada punto con lo que estima (0 o 1)
+as = []
+bs = []
+para i desde 0 hasta 20 {
+    para j desde 0 hasta 20 {
+        agregar(as, i / 20)
+        agregar(bs, j / 20)
+    }
+}
+malla = predecir(red, tabla_de({"a": as, "b": bs}))
+graficar dispersion de malla {
+    eje_x: a,
+    eje_y: b,
+    serie: prediccion,
+    titulo: "Lo que estima la red en cada punto",
+    archivo: "salidas/tablero_xor_frontera.png"
+}
+
+# Grafica 3: la comparacion con un perceptron simple, que solo traza una recta
+malla_p = predecir(neurona, tabla_de({"a": as, "b": bs}))
+graficar dispersion de malla_p {
+    eje_x: a,
+    eje_y: b,
+    serie: prediccion,
+    titulo: "Lo que estima un perceptron simple",
+    archivo: "salidas/tablero_xor_perceptron.png"
+}

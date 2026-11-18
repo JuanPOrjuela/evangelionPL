@@ -1,0 +1,61 @@
+# 4) Analisis exploratorio de datos de Data.xlsx
+# (el lenguaje lee CSV: datos/data.csv es la hoja Sheet1 de data.xlsx guardada como CSV)
+programa "Analisis exploratorio de Data"
+
+datos = cargar "datos/data.csv"
+
+# --- Como son los datos ---
+mostrar "filas: " + texto(filas(datos))
+mostrar datos |> limitar 5
+
+# --- Datos faltantes por columna ---
+mostrar datos |> resumir edad = contar(edad), nivel_edu = contar(nivel_edu),
+                         ingreso = contar(ingreso_mensual), sex = contar(sex), anios_esc = contar(anios_esc)
+
+# --- Estadisticas de las columnas numericas ---
+mostrar datos |> resumir minimo = minimo(edad), media = media(edad), mediana = mediana(edad),
+                         desviacion = desviacion(edad), maximo = maximo(edad)
+mostrar datos |> resumir minimo = minimo(ingreso_mensual), media = media(ingreso_mensual),
+                         mediana = mediana(ingreso_mensual), desviacion = desviacion(ingreso_mensual),
+                         maximo = maximo(ingreso_mensual)
+mostrar datos |> resumir minimo = minimo(anios_esc), media = media(anios_esc), mediana = mediana(anios_esc),
+                         desviacion = desviacion(anios_esc), maximo = maximo(anios_esc)
+
+# --- Columnas de texto: cuantos hay de cada uno ---
+datos = datos |> crear nivel_edu = reemplazar(nivel_edu, "Prrimaria", "Primaria")
+mostrar datos |> agrupar por [sex] |> resumir n = contar(), ingreso_medio = media(ingreso_mensual)
+mostrar datos |> agrupar por [nivel_edu] |> resumir n = contar(), ingreso_medio = media(ingreso_mensual),
+                                                    anios = media(anios_esc) |> ordenar por [anios asc]
+
+# --- Relaciones entre variables (correlacion de Pearson) ---
+mostrar "edad - ingreso:      " + texto(correlacion(datos.edad, datos.ingreso_mensual))
+mostrar "anios_esc - ingreso: " + texto(correlacion(datos.anios_esc, datos.ingreso_mensual))
+mostrar "edad - anios_esc:    " + texto(correlacion(datos.edad, datos.anios_esc))
+
+# --- Graficas ---
+graficar histograma de datos {
+    eje_x: edad,
+    titulo: "Distribucion de la edad",
+    archivo: "salidas/tablero_eda_edad.png"
+}
+graficar caja de datos {
+    eje_x: sex,
+    eje_y: ingreso_mensual,
+    titulo: "Ingreso por sexo",
+    archivo: "salidas/tablero_eda_ingreso_sexo.png"
+}
+por_nivel = datos |> agrupar por [nivel_edu] |> resumir ingreso = media(ingreso_mensual) |> ordenar por [ingreso asc]
+graficar barras de por_nivel {
+    eje_x: nivel_edu,
+    eje_y: ingreso,
+    titulo: "Ingreso medio por nivel educativo",
+    leyenda: falso,
+    ancho: 1100,
+    archivo: "salidas/tablero_eda_nivel.png"
+}
+graficar dispersion de datos {
+    eje_x: anios_esc,
+    eje_y: ingreso_mensual,
+    titulo: "Anios de estudio contra ingreso",
+    archivo: "salidas/tablero_eda_dispersion.png"
+}
