@@ -1,0 +1,13 @@
+datos = cargar "datos/data.csv"
+graficar histograma de datos {
+    eje_x: edad,
+    intervalos: 20,
+    titulo: "Histograma de la edad",
+    archivo: "salidas/histograma_edad.png"
+}
+graficar histograma de datos {
+    eje_x: ingreso_mensual,
+    intervalos: 30,
+    titulo: "Histograma del ingreso",
+    archivo: "salidas/histograma_ingreso.png"
+}

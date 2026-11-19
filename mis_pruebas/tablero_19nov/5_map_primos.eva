@@ -1,0 +1,18 @@
+funcion es_primo(n) {
+    si n < 2 { retornar falso }
+    d = 2
+    mientras d * d <= n {
+        si n % d == 0 { retornar falso }
+        d = d + 1
+    }
+    retornar verdadero
+}
+funcion aplicar(l, f) {
+    resultado = []
+    para x en l {
+        si f(x) { agregar(resultado, x) }
+    }
+    retornar resultado
+}
+mostrar aplicar(rango(1, 100), es_primo)
+mostrar mapear(es_primo, rango(1, 10))

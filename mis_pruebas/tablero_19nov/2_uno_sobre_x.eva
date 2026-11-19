@@ -1,0 +1,20 @@
+funcion f(x) { retornar 1 / x }
+xs = []
+ys = []
+lados = []
+para i desde -50 hasta 50 {
+    si i != 0 {
+        x = i / 10
+        agregar(xs, x)
+        agregar(ys, f(x))
+        si x < 0 { agregar(lados, "x < 0") } sino { agregar(lados, "x > 0") }
+    }
+}
+curva = tabla_de({"x": xs, "fx": ys, "lado": lados})
+graficar lineas de curva {
+    eje_x: x,
+    eje_y: fx,
+    serie: lado,
+    titulo: "f(x) = 1 / x",
+    archivo: "salidas/uno_sobre_x.png"
+}

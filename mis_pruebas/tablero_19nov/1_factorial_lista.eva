@@ -1,0 +1,14 @@
+funcion factorial_lista(l) {
+    r = 1
+    para x en l {
+        r = r * x
+    }
+    retornar r
+}
+n = 10
+l = rango(1, n)
+mostrar l
+mostrar texto(n) + "! = " + texto(factorial_lista(l))
+para k desde 5 hasta 100 {
+    mostrar texto(k) + "! = " + texto(factorial_lista(rango(1, k)))
+}

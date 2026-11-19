@@ -1,0 +1,13 @@
+xor = tabla_de({"a": [0, 0, 1, 1], "b": [0, 1, 0, 1], "salida": [0, 1, 1, 0]})
+p = perceptron(xor, ["a", "b"], "salida", 0.1, 500, "sigmoide")
+mostrar "perceptron simple: " + texto(p.exactitud)
+red = red_neuronal(xor, ["a", "b"], "salida", 4, 0.5, 3000)
+mostrar "perceptron multicapa: " + texto(red.exactitud)
+mostrar predecir(red, xor)
+curva = tabla_de({"epoca": rango(longitud(red.perdidas)), "perdida": red.perdidas})
+graficar lineas de curva {
+    eje_x: epoca,
+    eje_y: perdida,
+    titulo: "Perdida XOR",
+    archivo: "salidas/xor.png"
+}
