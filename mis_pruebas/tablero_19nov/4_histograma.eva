@@ -1,4 +1,4 @@
-datos = cargar "datos/data.csv"
+datos = cargar "../../datos/data.csv"
 graficar histograma de datos {
     eje_x: edad,
     intervalos: 20,
