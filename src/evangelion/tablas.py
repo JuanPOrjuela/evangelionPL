@@ -5,6 +5,8 @@ donde None significa "dato faltante". Ninguna operacion cambia la tabla
 original: todas devuelven una nueva.
 """
 
+from .archivos import extension
+from .excel import leer_xlsx
 from .listas import Lista, ordenada
 
 PALABRAS_BOOLEANAS = {"verdadero": True, "si": True, "true": True,
@@ -510,8 +512,16 @@ def leer_csv(ruta, separador: str = ",", codificacion: str = None, encabezado: b
             raise ValueError(f"con el separador '{separador}' todo quedó en una sola columna; parece que "
                              f"el archivo está separado con {SEPARADORES_COMUNES[otro]}: "
                              f'usa con {{ separador: "{escrito}" }}')
+    return _tabla_de_filas(filas, encabezado, decimal)
+
+
+def _tabla_de_filas(filas: Lista, encabezado: bool, decimal: str, sin_nombre: bool = False) -> Tabla:
+    """Arma la tabla con filas de textos (sacadas de un CSV o de un Excel).
+    Con sin_nombre, una columna sin titulo se llama col1, col2... en vez de fallar."""
     if encabezado:
         nombres, filas = Lista(n.strip() for n in filas[0]), filas[1:]
+        if sin_nombre:
+            nombres = Lista(n or f"col{i + 1}" for i, n in enumerate(nombres))
     else:
         nombres = Lista(f"col{i + 1}" for i in range(len(filas[0])))
     if len(set(nombres)) != len(nombres):
@@ -522,6 +532,26 @@ def leer_csv(ruta, separador: str = ",", codificacion: str = None, encabezado: b
 
     return Tabla(nombres, {nombre: inferir(Lista(fila[i] for fila in filas), decimal)
                            for i, nombre in enumerate(nombres)})
+
+
+EXCEL = (".xlsx", ".xlsm")
+
+
+def leer_archivo(ruta, separador: str = ",", codificacion: str = None, encabezado: bool = True,
+                 decimal: str = ".", hoja=None) -> Tabla:
+    """Lee un CSV o TXT con leer_csv, o un Excel .xlsx con nuestro lector de excel.py."""
+    tipo = extension(ruta)
+    if tipo in EXCEL:
+        filas = leer_xlsx(ruta, hoja)
+        if not filas:
+            raise ValueError("la hoja está vacía")
+        return _tabla_de_filas(filas, encabezado, ".", sin_nombre=True)
+    if tipo in (".xls", ".ods", ".numbers"):
+        raise ValueError(f"los archivos {tipo} no se leen; en Excel usa Guardar como y escoge "
+                         "Libro de Excel (.xlsx) o CSV")
+    if hoja is not None:
+        raise ValueError("la opción hoja solo sirve con archivos de Excel (.xlsx)")
+    return leer_csv(ruta, separador, codificacion, encabezado, decimal)
 
 
 def escribir_csv(tabla: Tabla, ruta, decimales: int = 4) -> None:

@@ -8,7 +8,7 @@ from .generado.EvaParser import EvaParser
 from .generado.EvaVisitor import EvaVisitor
 from .listas import Lista, ordenada
 from .simbolos import TablaSimbolos
-from .tablas import Columna, Tabla, es_entero_texto, es_numero, es_real_texto, escribir_csv, leer_csv
+from .tablas import Columna, Tabla, es_entero_texto, es_numero, es_real_texto, escribir_csv, leer_archivo
 
 # Cada agregacion es un metodo de Columna con el mismo nombre
 AGREGACIONES = ("suma", "media", "mediana", "minimo", "maximo", "desviacion", "contar")
@@ -46,7 +46,7 @@ MAX_VUELTAS = 1_000_000   # un ciclo que da mas vueltas seguramente nunca termin
 ELEMENTOS_EN_PANTALLA = 20
 TIPOS = ("entero", "real", "texto", "booleano")
 GRAFICAS = graficas.TIPOS
-OPCIONES_CARGA = ("separador", "codificacion", "encabezado", "decimal")
+OPCIONES_CARGA = ("separador", "codificacion", "encabezado", "decimal", "hoja")
 OPCIONES_GRAFICA = ("eje_x", "eje_y", "serie", "titulo", "etiqueta_x", "etiqueta_y", "archivo",
                     "color", "intervalos", "ancho", "alto", "leyenda")
 EJES = ("eje_x", "eje_y", "serie")
@@ -520,10 +520,10 @@ class Interprete(EvaVisitor):
             raise ErrorSemantico(ctx.CADENA().symbol, f"no existe el archivo '{ruta}'. Las rutas se buscan "
                                                       "desde la carpeta donde corres el programa.")
         try:
-            return leer_csv(ruta, separador=opciones.get("separador", ","),
-                            codificacion=opciones.get("codificacion"),
-                            encabezado=opciones.get("encabezado", True) is not False,
-                            decimal=opciones.get("decimal", "."))
+            return leer_archivo(ruta, separador=opciones.get("separador", ","),
+                                codificacion=opciones.get("codificacion"),
+                                encabezado=opciones.get("encabezado", True) is not False,
+                                decimal=opciones.get("decimal", "."), hoja=opciones.get("hoja"))
         except (ValueError, LookupError, TypeError, OSError) as error:
             raise ErrorSemantico(ctx, f"no se pudo leer '{ruta}': {error}.")
 

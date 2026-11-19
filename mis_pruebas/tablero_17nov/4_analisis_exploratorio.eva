@@ -1,8 +1,8 @@
 # 4) Analisis exploratorio de datos de Data.xlsx
-# (el lenguaje lee CSV: datos/data.csv es la hoja Sheet1 de data.xlsx guardada como CSV)
+# (cargar lee el .xlsx directamente; con { hoja: "Sheet1" } se escoge la hoja)
 programa "Analisis exploratorio de Data"
 
-datos = cargar "datos/data.csv"
+datos = cargar "datos/data.xlsx"
 
 # --- Como son los datos ---
 mostrar "filas: " + texto(filas(datos))
